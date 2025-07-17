@@ -3,3 +3,6 @@
 ## MSVC
 
 Here msvc implementation notes ...
+
+1.
+Base <-- Derived
