@@ -33,4 +33,7 @@
 
 # User-declared
 /build
+
 /.vs
+/Release
+/Debug
