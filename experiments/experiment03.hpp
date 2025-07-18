@@ -26,15 +26,15 @@ namespace experiment03 {
 		}
 	};
 
-	auto main() -> int {
-		// 
-		Derived der{};
-		Derived* p_der = &der;
-		p_der->meta();
-		der.meta();
-		der.test();
+	//auto test() -> int {
+	//	// 
+	//	Derived der{};
+	//	Derived* p_der = &der;
+	//	p_der->meta();
+	//	der.meta();
+	//	der.test();
 
-		int a; std::cin >> a;
-		return 0;
-	}
+	//	int a; std::cin >> a;
+	//	return 0;
+	//}
 }

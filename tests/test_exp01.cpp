@@ -1,9 +1,10 @@
 #include <iostream>
 #include <gtest/gtest.h>
 
-int add(int a, int b) { return a + b; }
+#include "../experiments/experiment01.hpp"
 
-TEST(AdditionTest, SimpleAddition) {
-    EXPECT_EQ(add(2, 3), 5);
-    ASSERT_NE(add(2, 2), 5);
+TEST(FirstExperimentTest, CallsDerivedMethod) {
+    experiment01::Derived derived{ 1231,2123 };
+    experiment01::Base* base = &derived;
+    EXPECT_EQ(base->test(), 8);
 }

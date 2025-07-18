@@ -1,4 +1,5 @@
 #include <iostream>
+#include <gtest/gtest.h>
 
 class Base1 {
 public:
@@ -32,7 +33,7 @@ public:
 //	}
 //};
 
-auto main() -> int {
+auto main(int argc, char **argv) -> int {
 	// 
 	Derived der{};
 	Derived* p_der = &der;
@@ -40,6 +41,9 @@ auto main() -> int {
 	der.meta();
 	der.test();
 
+	// Run tests
+	testing::InitGoogleTest(&argc, argv);
+	int res = RUN_ALL_TESTS();
 	int a; std::cin >> a;
 	return 0;
 }
