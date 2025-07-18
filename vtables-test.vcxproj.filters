@@ -16,6 +16,9 @@
     <Filter Include="Source Files\experiments">
       <UniqueIdentifier>{c901ef2b-647a-4026-8ba4-144eecf3bebb}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\tests">
+      <UniqueIdentifier>{0a25db8b-fa67-4efc-a0dd-363dfaf55a6c}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -29,6 +32,9 @@
     </ClCompile>
     <ClCompile Include="experiments\experiment02.cpp">
       <Filter>Source Files\experiments</Filter>
+    </ClCompile>
+    <ClCompile Include="tests\test_exp01.cpp">
+      <Filter>Source Files\tests</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>
