@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>vtablespp — Interactive MSVC VTable Explorer</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand"><span class="logo">vtablespp</span><span class="subtitle">Interactive MSVC VTable Explorer</span></div>
+  <nav class="topnav">
+    <button class="nav-btn active" data-view="layouts">Layouts</button>
+    <button class="nav-btn" data-view="concepts">Concepts</button>
+    <button class="nav-btn" data-view="rtti">RTTI</button>
+    <button class="nav-btn" data-view="roadmap">Roadmap</button>
+  </nav>
+  <div class="abi-controls">
+    <label>ABI <select id="abi-select"><option value="x64" selected>MSVC x64</option><option value="x86">MSVC x86</option></select></label>
+    <label class="switch"><input type="checkbox" id="show-offsets" checked><span>Offsets</span></label>
+    <label class="switch"><input type="checkbox" id="show-thunks" checked><span>Thunks</span></label>
+  </div>
+</header>
+
+<main class="workspace">
+<section id="view-layouts" class="view active">
+  <aside class="left-panel">
+    <h2>Иерархии</h2>
+    <div id="scenario-list" class="scenario-list"></div>
+    <div class="panel-card">
+      <h3>Легенда</h3>
+      <div class="legend">
+        <div><span class="chip primary"></span>Primary vftable</div>
+        <div><span class="chip secondary"></span>Secondary vftable</div>
+        <div><span class="chip virtual"></span>vbtable</div>
+        <div><span class="chip data"></span>Data member</div>
+        <div><span class="chip thunk"></span>Thunk / adjustor</div>
+      </div>
+    </div>
+    <div class="panel-card note"><h3>Важно</h3><p>MSVC layout является <b>implementation-defined</b>. Это учебная модель, а не гарантия для всех версий компилятора.</p></div>
+  </aside>
+
+  <section class="center-panel">
+    <div class="center-head">
+      <div><h1 id="scenario-title"></h1><p id="scenario-description"></p></div>
+      <div class="metrics" id="metrics"></div>
+    </div>
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-head"><h2>Object layout</h2><span class="muted" id="pointer-size"></span></div>
+        <div id="object-layout" class="object-layout"></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><h2>VTables</h2><span class="muted">Кликните слот для объяснения</span></div>
+        <div id="vtable-container" class="vtable-container"></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h2>Constructor flow</h2><span class="muted">Инициализация и установка vftable</span></div>
+      <div id="constructor-flow" class="flow"></div>
+    </div>
+    <div class="card canvas-card">
+      <div class="card-head">
+        <h2>ABI interaction graph</h2>
+        <div class="canvas-controls">
+          <button id="regenerate" class="mini-btn">Regenerate</button>
+          <button id="animate-links" class="mini-btn active">Animate links</button>
+          <span class="muted">Кликните узел, чтобы подсветить связи</span>
+        </div>
+      </div>
+      <canvas id="abi-canvas"></canvas>
+      <div id="canvas-legend" class="canvas-legend">
+        <span><i class="dot object"></i>Object / subobject</span>
+        <span><i class="dot vftable"></i>Vftable</span>
+        <span><i class="dot method"></i>Virtual method</span>
+        <span><i class="dot thunk"></i>Thunk</span>
+        <span><i class="dot rtti"></i>RTTI</span>
+      </div>
+    </div>
+  </section>
+
+  <aside class="right-panel">
+    <div class="card inspector"><h2>Inspector</h2><div id="inspector-content" class="inspector-content"><p class="muted">Выберите класс, поле, vftable или слот.</p></div></div>
+    <div class="card"><h2>C++ model</h2><pre id="cpp-code" class="code"></pre></div>
+    <div class="card"><h2>MSVC observation</h2><div id="abi-notes" class="notes"></div></div>
+    <div class="card"><h2>Thunk explorer</h2><div id="thunk-explainer" class="thunk-explainer"></div></div>
+  </aside>
+</section>
+
+<section id="view-concepts" class="view"><div class="concepts-grid" id="concepts-grid"></div></section>
+<section id="view-rtti" class="view">
+  <div class="rtti-wrap">
+    <div class="card"><h2>MSVC RTTI chain</h2><div id="rtti-diagram" class="rtti-diagram"></div></div>
+    <div class="card"><h2>Structures</h2><div id="rtti-structures" class="rtti-structures"></div></div>
+  </div>
+</section>
+<section id="view-roadmap" class="view"><div class="roadmap-grid" id="roadmap-grid"></div></section>
+</main>
+
+<footer class="statusbar"><span>vtablespp · educational ABI visualizer</span><span id="status-right"></span></footer>
+<script src="app.js"></script>
+</body>
+</html>
