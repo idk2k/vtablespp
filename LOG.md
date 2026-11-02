@@ -1,0 +1,11 @@
+
+[11/02/2026]
+- Fix CTest infinite run handling in vs code:
+https://github.com/microsoft/vscode-cmake-tools/commit/8867be5cfe26d08c44a8c7d0388cde25621125d8
+
+- Fix default Run CTest detect only 3 tests: add include(CTest) in CMakeLists.txt
+
+- Steps to fix some minor issues in VS Code:
+    CMake: Configure
+    Developer: Reload Window
+
