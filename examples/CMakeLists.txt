@@ -1,6 +1,18 @@
-add_executable(basic_example basic_example.cpp)
-target_link_libraries(basic_example PRIVATE vtablespp::vtablespp)
+function(vtablespp_add_example target source)
+    add_executable(${target} ${source})
 
-if(MSVC)
-    target_compile_options(basic_example PRIVATE /W4 /permissive-)
-endif()
+    target_link_libraries(
+        ${target}
+        PRIVATE vtablespp::vtablespp
+    )
+
+    if(MSVC)
+        target_compile_options(
+            ${target}
+            PRIVATE /W4 /permissive-
+        )
+    endif()
+endfunction()
+
+vtablespp_add_example(basic_example basic_example.cpp)
+vtablespp_add_example(multiple_inheritance multiple_inheritance.cpp)
