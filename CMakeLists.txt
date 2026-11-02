@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.21)
 
 project(vtablespp
     VERSION 0.1.0
-    DESCRIPTION "Library for inspecting and working with C++ virtual tables"
+    DESCRIPTION "Library for working with vtables internals"
     LANGUAGES CXX)
 
 option(VTABLESPP_BUILD_TESTS "Build vtablespp tests" ON)
