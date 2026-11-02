@@ -5,6 +5,8 @@ project(vtablespp
     DESCRIPTION "Library for working with vtables internals"
     LANGUAGES CXX)
 
+include(CTest)
+
 option(VTABLESPP_BUILD_TESTS "Build vtablespp tests" ON)
 option(VTABLESPP_BUILD_EXAMPLES "Build vtablespp examples" ON)
 option(VTABLESPP_WARNINGS_AS_ERRORS "Treat compiler warnings as errors" OFF)
