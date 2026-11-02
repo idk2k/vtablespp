@@ -69,6 +69,72 @@ int main() {
 }
 ```
 
+## Interactive example
+
+`basic_example` is a small interactive console application for exploring
+object addresses, base subobjects, and virtual function tables with the
+current MSVC ABI backend.
+
+### Single inheritance
+
+This experiment creates two separate objects:
+
+- a `Base` object;
+- a `Derived` object, inspected through a `const Base&`.
+
+For each object, the application prints:
+
+- the address of the inspected object or base subobject;
+- the address of its virtual function table;
+- the number of inspected slots;
+- the address stored in each inspected slot.
+
+It also performs ordinary virtual calls so that their results can be
+compared with the displayed table information.
+
+Viewing a `Derived` object through a `Base` reference does not create a
+new object or refer to the separate `Base` instance. The reference binds
+to the `Base` subobject within the existing `Derived` object.
+
+### Multiple inheritance
+
+This experiment creates one `MultiDerived` object and inspects it through
+references to its `Left` and `Right` base subobjects.
+
+Compare:
+
+- the complete object address;
+- the addresses of the two base subobjects;
+- the virtual function table addresses obtained from those subobjects.
+
+The example obtains base references using normal C++ conversions rather
+than assuming fixed byte offsets.
+
+### Inspecting memory in a debugger
+
+To compare the output with raw memory, set a breakpoint inside
+`show_single_inheritance()` or `show_multiple_inheritance()`, after the
+table information has been printed and before the function returns.
+
+Use addresses from the current execution. The sample objects are local
+variables, so their printed addresses must not be treated as valid object
+addresses after the function has returned.
+
+On the targeted MSVC x64 configuration, inspect eight bytes when reading
+a table pointer. In a byte-oriented memory view, pointer values appear
+in little-endian order.
+
+### Scope and limitations
+
+- This is an ABI-specific experiment, not a portable C++ reflection API.
+- Each table view inspects one explicitly supplied slot.
+- The example does not discover or validate the actual table length.
+- The fixtures intentionally omit virtual destructors and are not deleted
+  through base pointers.
+- Extracted entry addresses are displayed, not invoked.
+- Ordinary virtual calls are made through the declared C++ interfaces.
+- Exact addresses and layout details may differ between builds and runs.
+
 ## Important caveat
 
 Virtual table layout, RTTI layout, thunk generation, and multiple/virtual inheritance
