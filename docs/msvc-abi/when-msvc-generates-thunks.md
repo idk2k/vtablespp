@@ -134,3 +134,5 @@ return-adjustor: corrects the result AFTER the call
 | This-adjustor | `this` before the call | One implementation, several vftables, different `this` forms |
 | Return-adjustor (covariant return) | Returned pointer after the call | Covariant return type, caller expects the base form |
 | No thunk | — | One vftable path, matching `this` form, direct return type, or devirtualized call |
+
+- https://godbolt.org/z/rzGve8E57
