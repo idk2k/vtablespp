@@ -21,4 +21,4 @@ endfunction()
 
 vtablespp_add_example(basic_example basic_example.cpp)
 vtablespp_add_example(multiple_inheritance multiple_inheritance.cpp)
-vtablespp_add_example(call_multiple_inheritance call_multiple_inheritance.cpp impl.cpp)
+vtablespp_add_example(thunks_generation thunks_generation.cpp)
