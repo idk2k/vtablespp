@@ -45,7 +45,6 @@ struct MultiDerived : Left, Right {
 
 constexpr std::size_t inspected_slot_count = 1;
 
-
 void show_single_inheritance() {
     Base base_object;
     Derived derived_object;
@@ -55,8 +54,8 @@ void show_single_inheritance() {
 
     std::cout << "\n=== Single inheritance ===\n";
 
-    print_table("Base object", base);
-    print_table("Derived object viewed as Base", derived_as_base);
+    vtablespp_example::print_object_vtable("Base object", base, inspected_slot_count);
+    vtablespp_example::print_object_vtable("Derived object viewed as Base", derived_as_base, inspected_slot_count);
 
     std::cout << "\nNormal virtual calls:\n";
     std::cout << "  Base::value():    " << base.value() << '\n';
@@ -83,8 +82,8 @@ void show_multiple_inheritance() {
               << sizeof(object)
               << " bytes\n";
 
-    print_table("Left subobject", left);
-    print_table("Right subobject", right);
+    vtablespp_example::print_object_vtable("Left subobject", left, inspected_slot_count);
+    vtablespp_example::print_object_vtable("Right subobject", right, inspected_slot_count);
 
     std::cout << "\nNormal virtual calls:\n";
     std::cout << "  left.left():   " << left.left() << '\n';

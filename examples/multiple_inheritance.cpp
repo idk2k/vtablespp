@@ -46,26 +46,30 @@ void show_multiple_inheritance() {
     std::cout << "\n=== Multiple inheritance ===\n";
 
     std::cout << "\nComplete object address: "
-              << static_cast<const void*>(std::addressof(object))
-              << '\n';
+              << static_cast<const void*>(std::addressof(object)) << '\n';
 
-    std::cout << "sizeof(MultiDerived):    "
-              << sizeof(object)
-              << " bytes\n";
+    std::cout << "sizeof(Derived):    " << sizeof(object) << " bytes\n";
 
-    print_table("Left subobject", left);
-    print_table("Right subobject", right);
+    vtablespp_example::print_object_vtable(
+        "Left subobject",
+        left,
+        inspected_slot_count
+    );
+    vtablespp_example::print_object_vtable(
+        "Right subobject",
+        right,
+        inspected_slot_count
+    );
 
     std::cout << "\nNormal virtual calls:\n";
     std::cout << "  left.left():   " << left.left() << '\n';
     std::cout << "  right.right(): " << right.right() << '\n';
 
-    std::cout
-        << "\nThese are two base subobjects of ONE complete object.\n"
-        << "Compare their addresses and their vftable addresses.\n";
+    std::cout << "\nThese are two base subobjects of ONE complete object.\n"
+              << "Compare their addresses and their vftable addresses.\n";
 }
 
-}
+} // namespace
 
 int main() {
     show_multiple_inheritance();
