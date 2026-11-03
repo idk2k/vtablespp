@@ -136,3 +136,4 @@ return-adjustor: corrects the result AFTER the call
 | No thunk | — | One vftable path, matching `this` form, direct return type, or devirtualized call |
 
 - https://godbolt.org/z/rzGve8E57
+- https://stackoverflow.com/questions/3481548/why-do-we-need-this-pointer-adjustor-thunk
