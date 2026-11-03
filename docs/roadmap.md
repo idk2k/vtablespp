@@ -2,11 +2,11 @@
 
 ## v0.1 — Foundation
 
-- CMake build
-- MSVC x64 build script
-- Basic vtable pointer extraction
-- Basic examples
-- GoogleTest integration
++ CMake build
++ MSVC x64 build script
++ Basic vtable pointer extraction
++ Basic examples
++ GoogleTest integration
 
 ## v0.2 — MSVC RTTI
 
