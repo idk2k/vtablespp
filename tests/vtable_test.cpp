@@ -10,26 +10,31 @@ using namespace vtablespp_test;
 
 TEST(VTable, PolymorphicObjectHasNonZeroVTable) {
     SingleDerived object;
+
     EXPECT_NE(vtablespp::vtable_of(object), nullptr);
 }
 
 TEST(VTable, SingleInheritancePrimaryTableIsAccessible) {
     SingleDerived object;
-    auto view = vtablespp::vtable_view::from_object(object, 3);
+
+    const auto view =
+        vtablespp::vtable_view::from_object(object, 3);
+
     EXPECT_FALSE(view.empty());
-    EXPECT_EQ(view.size(), 3);
+    EXPECT_EQ(view.size(), 3u);
 }
 
 TEST(VTable, MultipleInheritanceHasSeparatePrimaryAndSecondaryTables) {
     MultiDerived object;
 
-    const void* primary = vtablespp::vtable_of(object);
+    const void* primary =
+        vtablespp::vtable_of(object);
 
-    // In the MSVC ABI, the secondary base usually has its own vftable pointer
-    // after the primary base subobject. The exact offset must be validated
-    // for the target architecture and compiler version.
-    const auto* base = static_cast<const unsigned char*>(static_cast<const void*>(&object));
-    const void* secondary = *reinterpret_cast<const void* const*>(base + sizeof(void*));
+    const auto secondary_view =
+        vtablespp::vtable_view::from_base<Right>(object, 1);
+
+    const void* secondary =
+        static_cast<const void*>(secondary_view.entries().data());
 
     EXPECT_NE(primary, nullptr);
     EXPECT_NE(secondary, nullptr);
@@ -41,14 +46,14 @@ TEST(VTableView, DefaultViewIsEmpty) {
     EXPECT_TRUE(view.empty());
     EXPECT_EQ(view.size(), 0u);
     EXPECT_TRUE(view.entries().empty());
-    EXPECT_EQ(view.at(0), nullptr);
+    EXPECT_EQ(view.at(0), std::nullopt);
 }
 
 TEST(VTableView, ExposesSuppliedEntries) {
     int first = 0;
     int second = 0;
 
-    const vtablespp::vtable_view::entry_type entries[] = {
+    const vtablespp::vtable_view::slot_entry entries[] = {
         &first,
         &second
     };
@@ -58,17 +63,19 @@ TEST(VTableView, ExposesSuppliedEntries) {
     EXPECT_FALSE(view.empty());
     EXPECT_EQ(view.size(), 2u);
 
-    EXPECT_EQ(view.at(0), &first);
-    EXPECT_EQ(view.at(1), &second);
-    EXPECT_EQ(view.at(2), nullptr);
+    ASSERT_TRUE(view.at(0).has_value());
+    ASSERT_TRUE(view.at(1).has_value());
+
+    EXPECT_EQ(*view.at(0), &first);
+    EXPECT_EQ(*view.at(1), &second);
+
+    EXPECT_EQ(view.at(2), std::nullopt);
 
     EXPECT_EQ(view.entries().data(), entries);
     EXPECT_EQ(view.entries().size(), 2u);
 }
 
 TEST(VTable, MultipleInheritanceExposesBothBaseTables) {
-    using namespace vtablespp_test;
-
     MultiDerived object;
 
     const Left& left = object;
@@ -78,7 +85,7 @@ TEST(VTable, MultipleInheritanceExposesBothBaseTables) {
         vtablespp::vtable_view::from_object(left, 1);
 
     const auto secondary =
-        vtablespp::vtable_view::from_object(right, 1);
+        vtablespp::vtable_view::from_base<Right>(object, 1);
 
     ASSERT_NE(primary.entries().data(), nullptr);
     ASSERT_NE(secondary.entries().data(), nullptr);
@@ -88,11 +95,14 @@ TEST(VTable, MultipleInheritanceExposesBothBaseTables) {
         secondary.entries().data()
     );
 
-    EXPECT_NE(primary.at(0), nullptr);
-    EXPECT_NE(secondary.at(0), nullptr);
+    ASSERT_TRUE(primary.at(0).has_value());
+    ASSERT_TRUE(secondary.at(0).has_value());
 
-    EXPECT_EQ(primary.at(1), nullptr);
-    EXPECT_EQ(secondary.at(1), nullptr);
+    EXPECT_NE(*primary.at(0), nullptr);
+    EXPECT_NE(*secondary.at(0), nullptr);
+
+    EXPECT_EQ(primary.at(1), std::nullopt);
+    EXPECT_EQ(secondary.at(1), std::nullopt);
 }
 
 } // namespace

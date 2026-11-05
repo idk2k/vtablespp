@@ -4,8 +4,10 @@
 #include <memory>
 #include <span>
 #include <type_traits>
+#include <optional>
 
 #include "vtablespp/abi/abi.hpp"
+#include "vtablespp/core/slot_info.hpp"
 
 namespace vtablespp {
 
@@ -18,35 +20,48 @@ namespace vtablespp {
 /// The supplied size is trusted, not discovered or validated.
 class vtable_view {
 public:
-    using entry_type = const void*;
+    using slot_entry = const void*;
 
     vtable_view() noexcept = default;
 
-    explicit vtable_view(
-        const entry_type* entries,
-        std::size_t size
-    ) noexcept
+    explicit vtable_view(const slot_entry* entries, std::size_t size) noexcept
         : entries_(entries), size_(size) {}
 
     /// Reads the table pointer at the beginning of the supplied object
     /// or base subobject, according to the selected ABI backend.
     template <class T>
     [[nodiscard]]
-    static vtable_view from_object(
-        const T& object,
-        std::size_t size
-    ) noexcept {
+    static vtable_view from_object(const T& object, std::size_t size) noexcept {
         static_assert(
             std::is_polymorphic_v<T>,
             "vtable_view requires a polymorphic type"
         );
 
-        const void* table = abi::vtable_of(
-            static_cast<const void*>(std::addressof(object))
+        const void* table =
+            abi::vtable_of(static_cast<const void*>(std::addressof(object)));
+
+        return vtable_view{static_cast<const slot_entry*>(table), size};
+    }
+
+    template <class Base, class Derived>
+    [[nodiscard]]
+    static vtable_view from_base(
+        const Derived& object,
+        std::size_t size
+    ) noexcept {
+        static_assert(
+            std::is_base_of_v<Base, Derived>,
+            "Base must be a base class of Derived"
+        );
+
+        const Base& base_subobject = static_cast<const Base&>(object);
+
+        const void* table = vtablespp::abi::vtable_of(
+            static_cast<const void*>(std::addressof(base_subobject))
         );
 
         return vtable_view{
-            static_cast<const entry_type*>(table),
+            static_cast<const slot_entry*>(table),
             size
         };
     }
@@ -64,17 +79,18 @@ public:
     /// Returns nullptr when index is outside the supplied range.
     /// Does not validate whether that range describes a real vftable.
     [[nodiscard]]
-    entry_type at(std::size_t index) const noexcept {
-        return index < size_ ? entries_[index] : nullptr;
+    std::optional<slot_entry> at(std::size_t index) const noexcept {
+        if (index >= size_) return std::nullopt;
+        return entries_[index];
     }
 
     [[nodiscard]]
-    std::span<const entry_type> entries() const noexcept {
+    std::span<const slot_entry> entries() const noexcept {
         return {entries_, size_};
     }
 
 private:
-    const entry_type* entries_ = nullptr;
+    const slot_entry* entries_ = nullptr;
     std::size_t size_ = 0;
 };
 
