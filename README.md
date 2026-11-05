@@ -48,6 +48,33 @@ cmake --build --preset msvc-x64-debug --config Debug
 ctest --preset msvc-x64-debug
 ```
 
+### 🛡️ Building with AddressSanitizer (ASan)
+
+To enable **AddressSanitizer** for the examples, use the `VTABLESPP_ENABLE_SANITIZERS` option. This is useful for detecting memory issues while exploring vftable internals.
+
+> **Note:** ASan on MSVC requires disabling incremental linking (`/INCREMENTAL:NO`) to ensure stable function addresses and avoid extra jump stubs that might interfere with thunk detection logic.
+
+#### Using `build.bat`
+Pass the CMake definition directly as an argument:
+
+```bash
+# Debug build with ASan enabled
+build.bat -DVTABLESPP_ENABLE_SANITIZERS=ON
+
+# Clean rebuild with ASan
+build.bat clean -DVTABLESPP_ENABLE_SANITIZERS=ON
+```
+
+If you configure manually, ensure you are in a Debug configuration:
+```cmake
+cmake --preset msvc-x64-debug -DVTABLESPP_ENABLE_SANITIZERS=ON
+cmake --build --preset msvc-x64-debug --config Debug
+```
+Requirements:
+- The build script automatically copies clang_rt.asan_dynamic-x86_64.dll to the output directory.
+- Make sure your environment has access to the Visual Studio runtime libraries.
+
+
 ## Example
 
 ```cpp
