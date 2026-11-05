@@ -15,3 +15,51 @@ https://github.com/microsoft/vscode-cmake-tools/commit/8867be5cfe26d08c44a8c7d03
     How to add ASan sanitizer in system:
     Visual Studio Installer -> add sanitizer
 
+[11/05/2026]
+- Split tests into separate files:
+    tests/vtable_view_test.cpp
+    tests/slot_classifier_test.cpp
+    tests/msvc_vtable_test.cpp
+
+- Add slot classification API:
+    slot_kind, slot_info, slot_classifier::inspect()
+
+- Implement conservative x64 this-adjustor detection:
+    match `sub rcx, imm8/imm32` + `jmp rel32` / `jmp [rip+rel32]`
+
+- Add safe executable-memory reader:
+    abi::read_code() using VirtualQuery + SEH
+
+- Add pure virtual call detection:
+    abi::purecall_address() and slot_kind::pure_call
+
+- Add incremental-linking jump stub (/INCREMENTAL) resolution:
+    resolve one `E9 rel32` jump before thunk classification
+
+- Add vtable_view::from_base<Base>() to access secondary base vftables
+  without hardcoding base-subobject offsets
+
+- Change vtable_view::at() to return std::optional:
+    distinguishes “slot does not exist” from “slot contains nullptr”
+
+- Add GoogleTest coverage:
+    vtable_view API
+    synthetic x64 thunk patterns (bytes sequence)
+    real MSVC multiple-inheritance cases
+    shared override -> this_adjustor{8}
+    separate base implementations -> no thunk
+    pure virtual slot -> pure_call
+
+- How to fix VS Code IntelliSense phantom errors:
+    CMake: Delete Cache and Reconfigure
+    C/C++: Reset IntelliSense Database
+
+
+==================================
+- Next steps:
+    direct-entry classification
+    return-adjustor detection
+    call-by-slot
+    vftable size detection
+    RTTI parsing
+    hooking (last)
