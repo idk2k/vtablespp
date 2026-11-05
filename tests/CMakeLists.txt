@@ -10,7 +10,9 @@ set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(googletest)
 
 add_executable(vtablespp_tests
-    vtable_test.cpp
+    vtable_view_test.cpp
+    slot_classifier_test.cpp
+    msvc_vtable_test.cpp
 )
 
 if(MSVC)

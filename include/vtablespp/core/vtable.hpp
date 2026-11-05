@@ -1,10 +1,10 @@
 #pragma once
 
+#include <span>
+#include <optional>
 #include <cstddef>
 #include <memory>
-#include <span>
 #include <type_traits>
-#include <optional>
 
 #include "vtablespp/abi/abi.hpp"
 #include "vtablespp/core/slot_info.hpp"
