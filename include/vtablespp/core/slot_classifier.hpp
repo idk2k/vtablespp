@@ -25,6 +25,4 @@ private:
 
     vtable_view table_;
 };
-
-
 } // namespace vtablespp

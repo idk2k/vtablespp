@@ -13,6 +13,14 @@ add_executable(vtablespp_tests
     vtable_test.cpp
 )
 
+if(MSVC)
+    target_compile_options(vtablespp_tests PRIVATE
+        /INCREMENTAL:NO)
+
+    target_link_options(vtablespp_tests PRIVATE
+        /INCREMENTAL:NO)
+endif()
+
 target_link_libraries(vtablespp_tests
     PRIVATE
         vtablespp::vtablespp

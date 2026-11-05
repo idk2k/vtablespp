@@ -8,11 +8,30 @@
 namespace vtablespp {
 namespace {
 
-struct this_adjustor_result {
-    bool matched = false;
-    std::ptrdiff_t adjustment = 0;
-    const void* jump_target = nullptr;
-};
+[[nodiscard]]
+std::optional<const void*> resolve_jmp_rel32(
+    const void* entry
+) noexcept {
+    constexpr std::size_t kJmpRel32Size = 5;
+
+    unsigned char bytes[5]{};
+
+    if (!abi::read_code(entry, sizeof(bytes), bytes)) {
+        return std::nullopt;
+    }
+
+    if (bytes[0] != 0xE9) {
+        return std::nullopt;
+    }
+
+    std::int32_t displacement = 0;
+    std::memcpy(&displacement, bytes + 1, sizeof(displacement));
+
+    const auto* base =
+        static_cast<const unsigned char*>(entry);
+
+    return base + kJmpRel32Size + displacement;
+}
 
 [[nodiscard]]
 bool is_purecall(const void* entry) noexcept {
@@ -28,28 +47,38 @@ bool is_purecall(const void* entry) noexcept {
 /// followed by one of:
 ///   E9 rel32         jmp rel32
 ///   FF 25 rel32      jmp qword ptr [rip + rel32]
+struct thunk_match {
+    bool matched = false;
+    std::ptrdiff_t adjustment = 0;
+    const void* target = nullptr;
+};
+
 [[nodiscard]]
-this_adjustor_result match_this_adjustor(
-    const void* entry
-) noexcept {
-    this_adjustor_result result;
+thunk_match match_this_adjustor(const void* entry) noexcept {
+    thunk_match result;
 
-    constexpr std::size_t max_prefix = 7;
-    std::array<std::byte, max_prefix> bytes{};
+    constexpr std::size_t kBytes = 16;
+    std::array<std::byte, kBytes> buffer{};
 
-    if (!abi::read_code(entry, bytes.size(), bytes.data())) {
+    if (!vtablespp::abi::read_code(
+            entry,
+            buffer.size(),
+            buffer.data()
+        )) {
         return result;
     }
 
-    const auto* p = reinterpret_cast<const unsigned char*>(bytes.data());
-    std::size_t adjustment_size = 0;
+    const auto* p =
+        reinterpret_cast<const unsigned char*>(buffer.data());
+
+    std::size_t prefix_size = 0;
     std::ptrdiff_t adjustment = 0;
 
     if (p[0] == 0x48 && p[1] == 0x83 && p[2] == 0xE9) {
-        adjustment_size = 4;
+        prefix_size = 4;
         adjustment = static_cast<std::int8_t>(p[3]);
     } else if (p[0] == 0x48 && p[1] == 0x81 && p[2] == 0xE9) {
-        adjustment_size = 7;
+        prefix_size = 7;
 
         std::int32_t raw = 0;
         std::memcpy(&raw, p + 3, sizeof(raw));
@@ -58,19 +87,18 @@ this_adjustor_result match_this_adjustor(
         return result;
     }
 
-    const unsigned char* jump = p + adjustment_size;
+    const unsigned char* jump = p + prefix_size;
+    const auto* base =
+        static_cast<const unsigned char*>(entry);
 
     if (jump[0] == 0xE9) {
         std::int32_t displacement = 0;
         std::memcpy(&displacement, jump + 1, sizeof(displacement));
 
-        const auto* entry_bytes =
-            static_cast<const unsigned char*>(entry);
-
         result.matched = true;
         result.adjustment = adjustment;
-        result.jump_target =
-            entry_bytes + adjustment_size + 5 + displacement;
+        result.target =
+            base + prefix_size + 5 + displacement;
         return result;
     }
 
@@ -78,17 +106,12 @@ this_adjustor_result match_this_adjustor(
         std::int32_t displacement = 0;
         std::memcpy(&displacement, jump + 2, sizeof(displacement));
 
-        const auto* entry_bytes =
-            static_cast<const unsigned char*>(entry);
+        const void* slot =
+            base + prefix_size + 6 + displacement;
 
-        const void* indirect_slot =
-            entry_bytes + adjustment_size + 6 + displacement;
-
-        // The target is stored at the RIP-relative location.
-        // Read it through the same safe-read interface.
         const void* target = nullptr;
-        if (!abi::read_code(
-                indirect_slot,
+        if (!vtablespp::abi::read_code(
+                slot,
                 sizeof(target),
                 &target
             )) {
@@ -97,12 +120,13 @@ this_adjustor_result match_this_adjustor(
 
         result.matched = true;
         result.adjustment = adjustment;
-        result.jump_target = target;
+        result.target = target;
         return result;
     }
 
     return result;
 }
+
 
 } // namespace
 
@@ -135,13 +159,26 @@ slot_info slot_classifier::classify_entry(
         return info;
     }
 
-    const this_adjustor_result adjustor =
-        match_this_adjustor(entry);
+    // First, try the entry itself.
+    auto adjustor = match_this_adjustor(entry);
+
+    // If this is an incremental-linking jump stub,
+    // follow exactly one jump and inspect its target.
+    if (!adjustor.matched) {
+        if (const auto resolved = resolve_jmp_rel32(entry)) {
+            adjustor = match_this_adjustor(*resolved);
+
+            if (adjustor.matched) {
+                info.final_target = adjustor.target;
+            }
+        }
+    } else {
+        info.final_target = adjustor.target;
+    }
 
     if (adjustor.matched) {
         info.kind = slot_kind::this_adjustor;
         info.this_adjustment = adjustor.adjustment;
-        info.final_target = adjustor.jump_target;
     }
 
     return info;
