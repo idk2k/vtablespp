@@ -1,3 +1,22 @@
+# ------------------- Sanitizers -------------------
+option(VTABLESPP_ENABLE_SANITIZERS "Enable ASan and UBSan for examples" OFF)
+
+if (MSVC AND VTABLESPP_ENABLE_SANITIZERS)
+    add_compile_options(/fsanitize=address)
+    add_link_options("$<$<CONFIG:Debug>:/INCREMENTAL:NO>")
+endif()
+
+if (MSVC AND VTABLESPP_ENABLE_SANITIZERS)
+    set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT "ProgramDatabase")
+    get_filename_component(MSVC_BIN_DIR "${CMAKE_CXX_COMPILER}" DIRECTORY)
+    
+    if (EXISTS "${MSVC_BIN_DIR}/clang_rt.asan_dynamic-x86_64.dll")
+        file(COPY "${MSVC_BIN_DIR}/clang_rt.asan_dynamic-x86_64.dll" 
+            DESTINATION "${CMAKE_BINARY_DIR}/examples/Debug")
+    endif()
+endif()
+# ------------------- Sanitizers -------------------
+
 function(vtablespp_add_example target)
     add_executable(${target} ${ARGN})
 
@@ -6,18 +25,6 @@ function(vtablespp_add_example target)
         PRIVATE vtablespp::vtablespp
     )
 
-    option(VTABLESPP_ENABLE_SANITIZERS "Enable ASan and UBSan for examples" OFF)
-
-    if(VTABLESPP_ENABLE_SANITIZERS)
-        if(MSVC) # ASan only
-            target_compile_options(${target} PRIVATE /fsanitize=address)
-            target_link_options(${target} PRIVATE /fsanitize=address)
-            target_compile_options(${target} PRIVATE /Zi) # Debug info
-        elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang") # ASan + UBSan
-            target_compile_options(${target} PRIVATE -fsanitize=address,undefined -fno-omit-frame-pointer)
-            target_link_options(${target} PRIVATE -fsanitize=address,undefined)
-        endif()
-    endif()
 
     if(MSVC)
         target_compile_options(

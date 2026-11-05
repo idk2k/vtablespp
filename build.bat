@@ -4,27 +4,27 @@ setlocal EnableExtensions EnableDelayedExpansion
 set "PRESET=msvc-x64-debug"
 set "CONFIG=Debug"
 set "BUILD_DIR=build\msvc-x64-debug"
+set "CMAKE_ARGS="
 
-:parse
-if "%~1"=="" goto run
-if /I "%~1"=="release" (
+echo %* | findstr /I "\<release\>" >nul && (
     set "PRESET=msvc-x64-release"
     set "CONFIG=Release"
     set "BUILD_DIR=build\msvc-x64-release"
-    shift
-    goto parse
 )
-if /I "%~1"=="clean" (
+echo %* | findstr /I "\<clean\>" >nul && (
     set "CLEAN=1"
-    shift
-    goto parse
 )
-if /I "%~1"=="help" (
-    echo Usage: build.bat [release] [clean]
+echo %* | findstr /I "\<help\>" >nul && (
+    echo Usage: build.bat [release] [clean] [any cmake options...]
     exit /b 0
 )
-echo Unknown option: %~1
-exit /b 1
+
+set "RAW_ARGS=%*"
+if defined RAW_ARGS (
+    set "RAW_ARGS=!RAW_ARGS:release=!"
+    set "RAW_ARGS=!RAW_ARGS:clean=!"
+    set "CMAKE_ARGS=!RAW_ARGS!"
+)
 
 :run
 if defined CLEAN (
@@ -39,7 +39,7 @@ if errorlevel 1 (
 )
 
 echo [1/3] Configuring: %PRESET%
-cmake --preset "%PRESET%" || exit /b 1
+cmake --preset "%PRESET%" %CMAKE_ARGS% || exit /b 1
 
 echo [2/3] Building: %CONFIG%
 cmake --build --preset "%PRESET%" --config "%CONFIG%" || exit /b 1
