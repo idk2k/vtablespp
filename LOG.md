@@ -9,3 +9,9 @@ https://github.com/microsoft/vscode-cmake-tools/commit/8867be5cfe26d08c44a8c7d03
     CMake: Configure
     Developer: Reload Window
 
+- Add ASan sanitizer for project (only for examples/).
+    Have to run build from x64 dev tools to work with that flag
+    -DVTABLESPP_ENABLE_SANITIZERS=ON
+    How to add ASan sanitizer in system:
+    Visual Studio Installer -> add sanitizer
+
