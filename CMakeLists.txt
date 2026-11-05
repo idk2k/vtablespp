@@ -21,7 +21,7 @@ target_include_directories(vtablespp PUBLIC
     $<INSTALL_INTERFACE:include>)
 
 target_sources(vtablespp PRIVATE
-    src/abi/windows/abi_windows.cpp
+    src/abi/msvc/abi_windows.cpp
     src/core/slot_classifier.cpp)
 
 if(MSVC)
