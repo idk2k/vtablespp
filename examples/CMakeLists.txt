@@ -9,11 +9,12 @@ endif()
 if (MSVC AND VTABLESPP_ENABLE_SANITIZERS)
     set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT "ProgramDatabase")
     get_filename_component(MSVC_BIN_DIR "${CMAKE_CXX_COMPILER}" DIRECTORY)
-    
-    if (EXISTS "${MSVC_BIN_DIR}/clang_rt.asan_dynamic-x86_64.dll")
-        file(COPY "${MSVC_BIN_DIR}/clang_rt.asan_dynamic-x86_64.dll" 
-            DESTINATION "${CMAKE_BINARY_DIR}/examples/Debug")
-    endif()
+
+    # IF YOU HAVE NO x64 DevTools from VS then uncomment it:
+    # if (EXISTS "${MSVC_BIN_DIR}/clang_rt.asan_dynamic-x86_64.dll")
+    #     file(COPY "${MSVC_BIN_DIR}/clang_rt.asan_dynamic-x86_64.dll" 
+    #         DESTINATION "${CMAKE_BINARY_DIR}/examples/Debug")
+    # endif()
 endif()
 # ------------------- Sanitizers -------------------
 

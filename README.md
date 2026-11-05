@@ -54,6 +54,8 @@ To enable **AddressSanitizer** for the examples, use the `VTABLESPP_ENABLE_SANIT
 
 > **Note:** ASan on MSVC requires disabling incremental linking (`/INCREMENTAL:NO`) to ensure stable function addresses and avoid extra jump stubs that might interfere with thunk detection logic.
 
+> **Note:** Open it from x64 Native Tools Command Prompt for VS 2022
+
 #### Using `build.bat`
 Pass the CMake definition directly as an argument:
 
