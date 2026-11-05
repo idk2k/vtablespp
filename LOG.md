@@ -1,3 +1,8 @@
+# vtablespp development log
+
+Date: 2026-11-05
+Author: Dmitriy S. <@idk2k>
+
 
 [11/02/2026]
 - Fix CTest infinite run handling in vs code:
