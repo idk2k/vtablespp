@@ -39,9 +39,13 @@ function(vtablespp_add_example target)
     endif()
 endfunction()
 
+# Basics
 vtablespp_add_example(basic_example basic_example.cpp)
 vtablespp_add_example(multiple_inheritance multiple_inheritance.cpp)
-vtablespp_add_example(thunks_generation thunks_generation.cpp)
 
+# Thunks in normal situation
+vtablespp_add_example(this_adjustment_thunk this_adjustment_thunk.cpp)
 vtablespp_add_example(return_adjustment_thunk return_adjustment_thunk.cpp)
+
+# Thunks in virtual inheritance scnenario
 vtablespp_add_example(v_inheritance_thunk v_inheritance_thunk.cpp)
