@@ -49,3 +49,6 @@ vtablespp_add_example(return_adjustment_thunk return_adjustment_thunk.cpp)
 
 # Thunks in virtual inheritance scnenario
 vtablespp_add_example(v_inheritance_thunk v_inheritance_thunk.cpp)
+
+# Other
+vtablespp_add_example(testing testing.cpp)
