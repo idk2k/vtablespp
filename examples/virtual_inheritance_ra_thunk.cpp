@@ -14,7 +14,6 @@ struct Derived : virtual Interface {
 int main() {
     Derived object{};
     Interface* r = &object;
-    Interface* p = r->clone();
-
+    r->clone();
     return 0;
 }
