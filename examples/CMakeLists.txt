@@ -44,3 +44,4 @@ vtablespp_add_example(multiple_inheritance multiple_inheritance.cpp)
 vtablespp_add_example(thunks_generation thunks_generation.cpp)
 
 vtablespp_add_example(return_adjustment_thunk return_adjustment_thunk.cpp)
+vtablespp_add_example(v_inheritance_thunk v_inheritance_thunk.cpp)

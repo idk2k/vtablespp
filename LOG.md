@@ -62,11 +62,12 @@ https://github.com/microsoft/vscode-cmake-tools/commit/8867be5cfe26d08c44a8c7d03
 
 ==================================
 - Next steps:
-    direct-entry classification
     return-adjustor detection
+    direct-entry classification
     call-by-slot
     vftable size detection
     RTTI parsing
+    virtual inheritance (with thunk support - it uses vbtable)
     hooking (last)
 
 [11/06/2026]
