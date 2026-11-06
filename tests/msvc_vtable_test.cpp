@@ -2,6 +2,7 @@
 
 #include <vtablespp/vtablespp.hpp>
 #include <vtablespp/core/slot_classifier.hpp>
+#include <vtablespp/core/slot_info.hpp>
 
 #include "fixtures.hpp"
 
@@ -14,10 +15,9 @@ using vtablespp::slot_kind;
 using vtablespp::vtable_view;
 
 TEST(MsvcVTable, SharedOverrideCreatesSecondaryThisAdjustor) {
-
     struct Left {
-    virtual void Q() = 0;
-    virtual ~Left() = default;
+        virtual void Q() = 0;
+        virtual ~Left() = default;
     };
 
     struct Right {
@@ -30,8 +30,7 @@ TEST(MsvcVTable, SharedOverrideCreatesSecondaryThisAdjustor) {
     };
     MultiDerived object;
 
-    const auto secondary =
-        vtable_view::from_base<Right>(object, 1);
+    const auto secondary = vtable_view::from_base<Right>(object, 1);
 
     const slot_classifier classifier{secondary};
 
@@ -45,20 +44,64 @@ TEST(MsvcVTable, SharedOverrideCreatesSecondaryThisAdjustor) {
 TEST(MsvcVTable, SeparateBaseImplementationsHaveNoThisAdjustor) {
     SeparateImplementationsDerived object;
 
-    const auto secondary =
-        vtable_view::from_base<SeparateRight>(object, 1);
+    const auto secondary = vtable_view::from_base<SeparateRight>(object, 1);
 
     const slot_classifier classifier{secondary};
 
     const auto info = classifier.inspect(0);
 
-    // Пока direct не реализован, корректный консервативный
-    // результат для прямой функции — unknown.
+    // while direct slot_type is not implemented
+    // result for actual direct function is — unknown.
     EXPECT_EQ(info.kind, slot_kind::unknown);
     EXPECT_EQ(info.this_adjustment, 0);
     EXPECT_EQ(info.final_target, std::nullopt);
 }
 
+namespace {
+struct LeftBase {
+    //  method with virtual body
+    virtual void left() const {}
+};
 
+struct RightBase {
+    // method should be defined!
+    virtual RightBase* clone() const {
+        return new RightBase(*this);
+    }
+};
+
+struct CovariantDerived : LeftBase, RightBase {
+    void left() const override {}
+
+    // covariant return
+    CovariantDerived* clone() const override {
+        return new CovariantDerived(*this);
+    }
+};
+
+} // namespace
+
+TEST(MsvcVTable, CovariantReturnCreatesSecondaryReturnAdjustor) {
+    CovariantDerived object{};
+
+    // vtable for RightBase
+    const auto right_view = vtable_view::from_base<RightBase>(object, 3);
+    const slot_classifier classifier{right_view};
+
+    // in MSVC for RightBase clone() stores in slot 0 (index 0)
+    const vtablespp::slot_info info = classifier.inspect(0);
+
+    EXPECT_EQ(info.kind, slot_kind::return_adjustor);
+
+    const std::size_t expected_offset =
+        reinterpret_cast<const char*>(static_cast<const RightBase*>(&object)) -
+        reinterpret_cast<const char*>(&object);
+
+    EXPECT_EQ(
+        info.return_adjustment,
+        static_cast<std::ptrdiff_t>(expected_offset)
+    );
+    ASSERT_TRUE(info.final_target.has_value());
+}
 
 } // namespace
