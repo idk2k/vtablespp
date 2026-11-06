@@ -68,3 +68,6 @@ https://github.com/microsoft/vscode-cmake-tools/commit/8867be5cfe26d08c44a8c7d03
     vftable size detection
     RTTI parsing
     hooking (last)
+
+[11/06/2026]
+

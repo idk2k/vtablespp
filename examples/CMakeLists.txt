@@ -26,7 +26,6 @@ function(vtablespp_add_example target)
         PRIVATE vtablespp::vtablespp
     )
 
-
     if(MSVC)
         target_compile_options(
             ${target}
@@ -43,3 +42,5 @@ endfunction()
 vtablespp_add_example(basic_example basic_example.cpp)
 vtablespp_add_example(multiple_inheritance multiple_inheritance.cpp)
 vtablespp_add_example(thunks_generation thunks_generation.cpp)
+
+vtablespp_add_example(return_adjustment_thunk return_adjustment_thunk.cpp)
