@@ -59,7 +59,6 @@ https://github.com/microsoft/vscode-cmake-tools/commit/8867be5cfe26d08c44a8c7d03
     CMake: Delete Cache and Reconfigure
     C/C++: Reset IntelliSense Database
 
-
 ==================================
 - Next steps (TODO):
     return-adjustor detection
@@ -73,3 +72,16 @@ https://github.com/microsoft/vscode-cmake-tools/commit/8867be5cfe26d08c44a8c7d03
 
 [11/06/2026]
 
+- add return-adjustor detection (RAD)
+- add tests for RAD
+- add better documentation for this adjustor thunk (TAT) and (RAT)
+
+==================================
+- Next steps (TODO):
+    RTTI parsing
+    direct-entry classification
+    call-by-slot
+    vftable size detection
+    virtual inheritance (with thunk support - it uses vbtable)
+    hooking (last)
+==================================
