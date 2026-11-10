@@ -8,3 +8,4 @@
 #include "vtablespp/core/vtable.hpp"
 #include "vtablespp/core/class_info.hpp"
 #include "vtablespp/rtti/rtti.hpp"
+#include "vtablespp/core/call_slot.hpp"
