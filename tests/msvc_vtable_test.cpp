@@ -50,9 +50,7 @@ TEST(MsvcVTable, SeparateBaseImplementationsHaveNoThisAdjustor) {
 
     const auto info = classifier.inspect(0);
 
-    // while direct slot_type is not implemented
-    // result for actual direct function is — unknown.
-    EXPECT_EQ(info.kind, slot_kind::unknown);
+    EXPECT_EQ(info.kind, slot_kind::direct);
     EXPECT_EQ(info.this_adjustment, 0);
     EXPECT_EQ(info.final_target, std::nullopt);
 }

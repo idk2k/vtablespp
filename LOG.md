@@ -97,3 +97,15 @@ https://github.com/microsoft/vscode-cmake-tools/commit/8867be5cfe26d08c44a8c7d03
     virtual inheritance (with thunk support - it uses vbtable)
     hooking (last)
 ==================================
+
+[11/10/2026]
+
+==================================
+- Next steps (TODO):
+    direct-entry classification
+    call-by-slot
+    RTTI parsing   
+    vftable size detection
+    virtual inheritance (with thunk support - it uses vbtable)
+    hooking (last)
+==================================

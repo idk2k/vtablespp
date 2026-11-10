@@ -8,6 +8,15 @@
 namespace vtablespp {
 namespace {
 
+namespace {
+[[nodiscard]]
+bool is_readable_code(const void* entry) noexcept {
+    unsigned char first_byte = 0;
+    return abi::read_code(entry, sizeof(first_byte), &first_byte);
+}
+} // namespace
+
+
 [[nodiscard]]
 std::optional<const void*> resolve_jmp_rel32(const void* entry) noexcept {
     constexpr std::size_t kJmpRel32Size = 5;
@@ -368,9 +377,17 @@ slot_info slot_classifier::classify_entry(const void* entry) const noexcept {
         return info;
     }
 
-    // 3. If its not a thunk and not a pure_call, then its normal method
+    // 3. Not a pure-call and not a recognized thunk:
+    // treat it as a direct virtual-function entry.
+    if (is_readable_code(entry)) {
+        info.kind = slot_kind::direct;
+        info.evidence = direct_evidence::none;
+        return info;
+    }
+
     info.kind = slot_kind::unknown;
     return info;
 }
+
 
 } // namespace vtablespp

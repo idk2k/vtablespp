@@ -117,7 +117,7 @@ TEST(SlotClassifier, OrdinaryFunctionIsNotThisAdjustor) {
 
     const slot_info info = classifier.inspect(0);
 
-    EXPECT_EQ(info.kind, slot_kind::unknown);
+    EXPECT_EQ(info.kind, slot_kind::direct);
     EXPECT_EQ(info.this_adjustment, 0);
     EXPECT_EQ(info.final_target, std::nullopt);
 }
