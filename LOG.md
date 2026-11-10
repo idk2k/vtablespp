@@ -101,12 +101,12 @@ https://github.com/microsoft/vscode-cmake-tools/commit/8867be5cfe26d08c44a8c7d03
 [11/10/2026]
 
 - added direct-entry classification (maybe poor, need MORE TESTS)
+- added call-by-slot (need MORE EXAMPLES)
 
 ==================================
-- Next steps (TODO):
-    call-by-slot
+- Next steps (TODO):  
     RTTI parsing   
     vftable size detection
-    virtual inheritance (with thunk support - it uses vbtable)
     hooking (last)
+    virtual inheritance (with thunk support - it uses vbtable)
 ==================================
