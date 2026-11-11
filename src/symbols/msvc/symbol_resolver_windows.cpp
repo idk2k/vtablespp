@@ -2,6 +2,9 @@
 
 #include <windows.h>
 #include <dbghelp.h>
+#include <windows.h>
+#include <psapi.h>
+#include <dbghelp.h>
 
 #include <array>
 #include <utility>
@@ -15,9 +18,7 @@ constexpr std::size_t kMaxSymbolNameLength = 1024;
 constexpr std::size_t kMaxUndecoratedNameLength = 2048;
 
 [[nodiscard]]
-std::optional<std::string> undecorate(
-    const char* mangled_name
-) {
+std::optional<std::string> undecorate(const char* mangled_name) {
     if (mangled_name == nullptr) {
         return std::nullopt;
     }
@@ -39,27 +40,56 @@ std::optional<std::string> undecorate(
 }
 
 [[nodiscard]]
-std::optional<std::string> module_name_for_address(
-    HANDLE process,
-    DWORD64 address
-) {
+std::optional<std::string>
+module_name_for_address(HANDLE process, DWORD64 address) {
     IMAGEHLP_MODULEW64 module{};
     module.SizeOfStruct = sizeof(module);
 
-    if (!::SymGetModuleInfoW64(
-            process,
-            address,
-            &module
-        )) {
+    if (!::SymGetModuleInfoW64(process, address, &module)) {
         return std::nullopt;
     }
 
-    return std::string{
-        module.ModuleName,
-        module.ModuleName + std::char_traits<wchar_t>::length(
-            module.ModuleName
-        )
-    };
+    const std::wstring wide_name{module.ModuleName};
+
+    if (wide_name.empty()) {
+        return std::nullopt;
+    }
+
+    const int required_size = ::WideCharToMultiByte(
+        CP_UTF8,
+        0,
+        wide_name.c_str(),
+        static_cast<int>(wide_name.size()),
+        nullptr,
+        0,
+        nullptr,
+        nullptr
+    );
+
+    if (required_size <= 0) {
+        return std::nullopt;
+    }
+
+    std::string utf8_name(static_cast<std::size_t>(required_size), '\0');
+
+    const int converted_size = ::WideCharToMultiByte(
+        CP_UTF8,
+        0,
+        wide_name.c_str(),
+        static_cast<int>(wide_name.size()),
+        utf8_name.data(),
+        required_size,
+        nullptr,
+        nullptr
+    );
+
+    if (converted_size <= 0) {
+        return std::nullopt;
+    }
+
+    utf8_name.resize(static_cast<std::size_t>(converted_size));
+
+    return utf8_name;
 }
 
 } // namespace
@@ -73,14 +103,12 @@ symbol_resolver::~symbol_resolver() {
 }
 
 symbol_resolver::symbol_resolver(symbol_resolver&& other) noexcept
-    : process_(other.process_),
-      initialized_(other.initialized_) {
+    : process_(other.process_), initialized_(other.initialized_) {
     other.process_ = nullptr;
     other.initialized_ = false;
 }
 
-symbol_resolver&
-symbol_resolver::operator=(symbol_resolver&& other) noexcept {
+symbol_resolver& symbol_resolver::operator=(symbol_resolver&& other) noexcept {
     if (this != &other) {
         if (initialized_ && process_ != nullptr) {
             ::SymCleanup(static_cast<HANDLE>(process_));
@@ -103,42 +131,32 @@ bool symbol_resolver::initialize() {
 
     process_ = ::GetCurrentProcess();
 
-    // SYMOPT_UNDNAME включать не нужно: мы деманглим отдельно,
-    // чтобы сохранить и mangled, и читаемое имя.
-    if (!::SymInitialize(
-            static_cast<HANDLE>(process_),
-            nullptr,
-            FALSE
-        )) {
-        process_ = nullptr;
-        return false;
+    if (!::SymInitialize(static_cast<HANDLE>(process_), nullptr, TRUE)) {
+        const DWORD error = ::GetLastError();
+
+        // В редких случаях модуль уже может быть загружен.
+        if (error != ERROR_ALREADY_EXISTS) {
+            process_ = nullptr;
+            return false;
+        }
     }
 
-    // Позволяет DbgHelp подгружать символы по мере необходимости.
-    ::SymSetOptions(
-        SYMOPT_UNDNAME
-        | SYMOPT_DEFERRED_LOADS
-        | SYMOPT_LOAD_LINES
-    );
+    ::SymSetOptions(SYMOPT_UNDNAME | SYMOPT_DEFERRED_LOADS | SYMOPT_LOAD_LINES);
 
     initialized_ = true;
     return true;
 }
 
-std::optional<symbol_info>
-symbol_resolver::resolve(const void* address) const {
+std::optional<symbol_info> symbol_resolver::resolve(const void* address) const {
     if (!initialized_ || address == nullptr) {
         return std::nullopt;
     }
 
-    const auto address_value =
-        reinterpret_cast<DWORD64>(address);
+    const auto address_value = reinterpret_cast<DWORD64>(address);
 
-    std::array<char, sizeof(SYMBOL_INFO) + kMaxSymbolNameLength>
-        storage{};
+    std::array<char, sizeof(SYMBOL_INFO) + kMaxSymbolNameLength> storage{};
 
-    auto* symbol =
-        reinterpret_cast<SYMBOL_INFO*>(storage.data());
+    auto* symbol = reinterpret_cast<SYMBOL_INFO*>(storage.data());
 
     symbol->SizeOfStruct = sizeof(SYMBOL_INFO);
     symbol->MaxNameLen = kMaxSymbolNameLength;
@@ -157,10 +175,8 @@ symbol_resolver::resolve(const void* address) const {
     symbol_info result;
     result.name = symbol->Name;
     result.displacement = displacement;
-    result.module = module_name_for_address(
-        static_cast<HANDLE>(process_),
-        address_value
-    );
+    result.module =
+        module_name_for_address(static_cast<HANDLE>(process_), address_value);
 
     result.demangled_name = undecorate(symbol->Name);
 

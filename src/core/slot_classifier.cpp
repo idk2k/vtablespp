@@ -351,6 +351,10 @@ slot_info slot_classifier::classify_entry(const void* entry) const noexcept {
     if (adjustor.matched) {
         info.kind = slot_kind::this_adjustor;
         info.this_adjustment = adjustor.adjustment;
+        info.final_target = adjustor.target;
+
+        resolve_symbol(info);
+
         return info;
     }
 
@@ -373,6 +377,9 @@ slot_info slot_classifier::classify_entry(const void* entry) const noexcept {
         info.return_adjustment = ret_adjustor.adjustment;
         info.is_virtual_thunk = ret_adjustor.is_virtual;
         info.final_target = ret_adjustor.target;
+
+        resolve_symbol(info);
+
         return info;
     }
 

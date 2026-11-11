@@ -13,6 +13,7 @@ add_executable(vtablespp_tests
     vtable_view_test.cpp
     slot_classifier_test.cpp
     msvc_vtable_test.cpp
+    symbol_resolver_test.cpp
 )
 
 if(MSVC)
@@ -21,6 +22,14 @@ if(MSVC)
 
     target_link_options(vtablespp_tests PRIVATE
         /INCREMENTAL:NO)
+        
+    target_compile_options(vtablespp_tests PRIVATE
+        $<$<CXX_COMPILER_ID:MSVC>:/Zi>
+    )
+
+    target_link_options(vtablespp_tests PRIVATE
+        $<$<CXX_COMPILER_ID:MSVC>:/DEBUG>
+    )
 endif()
 
 target_link_libraries(vtablespp_tests

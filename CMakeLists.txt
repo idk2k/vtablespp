@@ -33,6 +33,14 @@ if(MSVC)
     target_link_libraries(vtablespp PUBLIC user32)
     target_link_libraries(vtablespp PUBLIC kernel32)
     target_link_libraries(vtablespp PRIVATE Dbghelp.lib)
+    target_link_libraries(vtablespp PRIVATE Psapi.lib)
+    target_compile_options(vtablespp PRIVATE
+    $<$<CXX_COMPILER_ID:MSVC>:/Zi>
+    )
+
+    target_link_options(vtablespp PRIVATE
+        $<$<CXX_COMPILER_ID:MSVC>:/DEBUG>
+    )
 endif()
 
 if(VTABLESPP_BUILD_EXAMPLES)
