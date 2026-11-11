@@ -31,9 +31,7 @@ struct SeparateRight {
     virtual ~SeparateRight() = default;
 };
 
-struct SeparateDerived final
-    : SeparateLeft,
-      SeparateRight {};
+struct SeparateDerived final : SeparateLeft, SeparateRight {};
 
 void print_symbol(const vtablespp::slot_info& info) {
     std::cout << "  kind: ";
@@ -70,14 +68,14 @@ void print_symbol(const vtablespp::slot_info& info) {
         std::cout << "  module: " << *info.module << '\n';
     }
 
-    std::cout << "  displacement: "
-              << info.symbol_displacement
-              << '\n';
+    std::cout << "  displacement: " << info.symbol_displacement << '\n';
 
     if (info.final_target.has_value()) {
-        std::cout << "  final_target: "
-                  << *info.final_target
-                  << '\n';
+        std::cout << "  final_target: " << *info.final_target << '\n';
+    }
+    std::cout << "  entry: " << info.entry << '\n';
+    if (info.kind == vtablespp::slot_kind::this_adjustor) {
+        std::cout << "  this adjustment: " << info.this_adjustment << '\n';
     }
 }
 
@@ -88,8 +86,7 @@ void print_separator(const char* title) {
 } // namespace
 
 int main() {
-    auto resolver =
-        std::make_shared<vtablespp::symbols::symbol_resolver>();
+    auto resolver = std::make_shared<vtablespp::symbols::symbol_resolver>();
 
     if (!resolver->initialize()) {
         std::cerr << "Failed to initialize DbgHelp symbol resolver\n";
@@ -118,40 +115,29 @@ int main() {
     const auto right_view =
         vtablespp::vtable_view::from_base<Right>(thunk_object, 1);
 
-    const vtablespp::slot_classifier right_classifier{
-        right_view,
-        resolver
-    };
+    const vtablespp::slot_classifier right_classifier{right_view, resolver};
 
     const auto thunk_info = right_classifier.inspect(0);
     print_symbol(thunk_info);
 
     print_separator("Known function");
 
-    const auto known_symbol = resolver->resolve(
-        reinterpret_cast<const void*>(&print_separator)
-    );
+    const auto known_symbol =
+        resolver->resolve(reinterpret_cast<const void*>(&print_separator));
 
     if (known_symbol.has_value()) {
-        std::cout << "  mangled: "
-                  << known_symbol->name
-                  << '\n';
+        std::cout << "  mangled: " << known_symbol->name << '\n';
 
         if (known_symbol->demangled_name.has_value()) {
-            std::cout << "  demangled: "
-                      << *known_symbol->demangled_name
+            std::cout << "  demangled: " << *known_symbol->demangled_name
                       << '\n';
         }
 
         if (known_symbol->module.has_value()) {
-            std::cout << "  module: "
-                      << *known_symbol->module
-                      << '\n';
+            std::cout << "  module: " << *known_symbol->module << '\n';
         }
 
-        std::cout << "  displacement: "
-                  << known_symbol->displacement
-                  << '\n';
+        std::cout << "  displacement: " << known_symbol->displacement << '\n';
     } else {
         std::cout << "  Symbol was not resolved\n";
     }

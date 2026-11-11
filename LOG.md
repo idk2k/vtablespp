@@ -113,8 +113,8 @@ https://github.com/microsoft/vscode-cmake-tools/commit/8867be5cfe26d08c44a8c7d03
 
 [11/11/2026]
 
+- add symbol_resolver: address → symbol name, displacement, module.
+- add extend slot_info: symbol_name, symbol_displacement, module.
+- add demangling using UnDecorateSymbolName.
 
 TODO:
-1. symbol_resolver: адрес → symbol name, displacement, module.
-2. Extend slot_info: symbol_name, symbol_displacement, module.
-3. Demangling using UnDecorateSymbolName.
