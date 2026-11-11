@@ -110,3 +110,11 @@ https://github.com/microsoft/vscode-cmake-tools/commit/8867be5cfe26d08c44a8c7d03
     hooking (last)
     virtual inheritance (with thunk support - it uses vbtable)
 ==================================
+
+[11/11/2026]
+
+
+TODO:
+1. symbol_resolver: адрес → symbol name, displacement, module.
+2. Extend slot_info: symbol_name, symbol_displacement, module.
+3. Demangling using UnDecorateSymbolName.

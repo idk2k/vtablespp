@@ -16,7 +16,6 @@ bool is_readable_code(const void* entry) noexcept {
 }
 } // namespace
 
-
 [[nodiscard]]
 std::optional<const void*> resolve_jmp_rel32(const void* entry) noexcept {
     constexpr std::size_t kJmpRel32Size = 5;
@@ -382,6 +381,9 @@ slot_info slot_classifier::classify_entry(const void* entry) const noexcept {
     if (is_readable_code(entry)) {
         info.kind = slot_kind::direct;
         info.evidence = direct_evidence::none;
+
+        resolve_symbol(info);
+
         return info;
     }
 
@@ -389,5 +391,29 @@ slot_info slot_classifier::classify_entry(const void* entry) const noexcept {
     return info;
 }
 
+void slot_classifier::resolve_symbol(slot_info& info) const noexcept {
+    if (!resolver_ || info.entry == nullptr) {
+        return;
+    }
 
+    auto symbol_opt = resolver_->resolve(info.entry);
+
+    if (!symbol_opt.has_value()) {
+        return;
+    }
+
+    symbols::symbol_info symbol = std::move(*symbol_opt);
+
+    info.symbol_name = std::move(symbol.name);
+    info.demangled_name = std::move(symbol.demangled_name);
+    info.symbol_displacement = symbol.displacement;
+
+    if (symbol.module.has_value()) {
+        info.module = std::move(*symbol.module);
+    }
+
+    if (info.kind == slot_kind::direct) {
+        info.evidence = direct_evidence::symbol_resolved;
+    }
+}
 } // namespace vtablespp

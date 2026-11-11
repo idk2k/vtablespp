@@ -22,7 +22,8 @@ target_include_directories(vtablespp PUBLIC
 
 target_sources(vtablespp PRIVATE
     src/abi/msvc/abi_windows.cpp
-    src/core/slot_classifier.cpp)
+    src/core/slot_classifier.cpp
+    src/symbols/msvc/symbol_resolver_windows.cpp)
 
 if(MSVC)
     target_compile_definitions(vtablespp PUBLIC
@@ -31,6 +32,7 @@ if(MSVC)
         _CRT_SECURE_NO_WARNINGS)
     target_link_libraries(vtablespp PUBLIC user32)
     target_link_libraries(vtablespp PUBLIC kernel32)
+    target_link_libraries(vtablespp PRIVATE Dbghelp.lib)
 endif()
 
 if(VTABLESPP_BUILD_EXAMPLES)
