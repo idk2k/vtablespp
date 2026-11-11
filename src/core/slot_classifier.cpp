@@ -399,25 +399,26 @@ slot_info slot_classifier::classify_entry(const void* entry) const noexcept {
 }
 
 void slot_classifier::resolve_symbol(slot_info& info) const noexcept {
-    if (!resolver_ || info.entry == nullptr) {
+    if (!resolver_) {
         return;
     }
 
-    auto symbol_opt = resolver_->resolve(info.entry);
+    const void* address = info.final_target.value_or(info.entry);
 
-    if (!symbol_opt.has_value()) {
+    if (address == nullptr) {
         return;
     }
 
-    symbols::symbol_info symbol = std::move(*symbol_opt);
+    auto symbol = resolver_->resolve(address);
 
-    info.symbol_name = std::move(symbol.name);
-    info.demangled_name = std::move(symbol.demangled_name);
-    info.symbol_displacement = symbol.displacement;
-
-    if (symbol.module.has_value()) {
-        info.module = std::move(*symbol.module);
+    if (!symbol) {
+        return;
     }
+
+    info.symbol_name = std::move(symbol->name);
+    info.demangled_name = std::move(symbol->demangled_name);
+    info.symbol_displacement = symbol->displacement;
+    info.module = std::move(symbol->module);
 
     if (info.kind == slot_kind::direct) {
         info.evidence = direct_evidence::symbol_resolved;
