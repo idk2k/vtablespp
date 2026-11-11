@@ -35,13 +35,16 @@ struct slot_info {
     const void* entry = nullptr;
     std::optional<const void*> final_target;
 
-    bool has_rtti = false;
     direct_evidence evidence = direct_evidence::none;
 
     std::optional<std::string> symbol_name;
     std::optional<std::string> demangled_name;
     std::uint64_t symbol_displacement = 0;
     std::optional<std::string> module;
+
+    bool has_rtti = false;
+    std::optional<std::string> rtti_class_name;
+    std::uint32_t rtti_vtable_offset = 0;
 };
 
 } // namespace vtablespp

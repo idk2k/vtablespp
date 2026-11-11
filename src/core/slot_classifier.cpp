@@ -307,15 +307,15 @@ return_thunk_match match_return_adjustor(const void* entry) noexcept {
 
 } // namespace
 
-slot_info slot_classifier::inspect(std::size_t index) const noexcept {
-    const std::optional<vtable_view::slot_entry> entry = table_.at(index);
+// slot_info slot_classifier::inspect(std::size_t index) const noexcept {
+//     const std::optional<vtable_view::slot_entry> entry = table_.at(index);
 
-    if (!entry.has_value()) {
-        return slot_info{};
-    }
+//     if (!entry.has_value()) {
+//         return slot_info{};
+//     }
 
-    return classify_entry(*entry);
-}
+//     return classify_entry(*entry);
+// }
 
 slot_info slot_classifier::classify_entry(const void* entry) const noexcept {
     slot_info info;
@@ -424,4 +424,33 @@ void slot_classifier::resolve_symbol(slot_info& info) const noexcept {
         info.evidence = direct_evidence::symbol_resolved;
     }
 }
+
+void slot_classifier::resolve_rtti(slot_info& info) const noexcept {
+    if (!rtti_) {
+        return;
+    }
+
+    const auto metadata = rtti_->read();
+
+    if (!metadata.has_value()) {
+        return;
+    }
+
+    info.has_rtti = true;
+    info.rtti_class_name = metadata->class_name;
+    info.rtti_vtable_offset = metadata->vtable_offset;
+}
+
+slot_info slot_classifier::inspect(std::size_t index) const noexcept {
+    const auto entry = table_.at(index);
+
+    slot_info info = entry.has_value()
+        ? classify_entry(*entry)
+        : slot_info{};
+
+    resolve_rtti(info);
+
+    return info;
+}
+
 } // namespace vtablespp

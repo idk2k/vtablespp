@@ -30,7 +30,7 @@ std::optional<const void*> purecall_address() noexcept {
     return static_cast<const void*>(&_purecall);
 }
 
-bool read_code(
+bool read_memory(
     const void* address,
     std::size_t size,
     void* destination
@@ -40,20 +40,16 @@ bool read_code(
     }
 
     MEMORY_BASIC_INFORMATION info{};
+
     if (::VirtualQuery(address, &info, sizeof(info)) != sizeof(info)) {
         return false;
     }
 
-    if (info.State != MEM_COMMIT) {
+    if (info.State != MEM_COMMIT || !is_readable_protection(info.Protect)) {
         return false;
     }
 
-    if (!is_readable_protection(info.Protect)) {
-        return false;
-    }
-
-    const auto* first =
-        static_cast<const unsigned char*>(address);
+    const auto* first = static_cast<const unsigned char*>(address);
     const auto* region_end =
         static_cast<const unsigned char*>(info.BaseAddress) +
         info.RegionSize;
@@ -73,5 +69,14 @@ bool read_code(
         return false;
     }
 }
+
+bool read_code(
+    const void* address,
+    std::size_t size,
+    void* destination
+) noexcept {
+    return read_memory(address, size, destination);
+}
+
 
 } // namespace vtablespp::abi

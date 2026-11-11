@@ -38,4 +38,11 @@ bool read_code(
     void* destination
 ) noexcept;
 
+[[nodiscard]]
+bool read_memory(
+    const void* address,
+    std::size_t size,
+    void* destination
+) noexcept;
+
 } // namespace vtablespp::abi

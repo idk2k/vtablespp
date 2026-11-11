@@ -116,5 +116,11 @@ https://github.com/microsoft/vscode-cmake-tools/commit/8867be5cfe26d08c44a8c7d03
 - add symbol_resolver: address → symbol name, displacement, module.
 - add extend slot_info: symbol_name, symbol_displacement, module.
 - add demangling using UnDecorateSymbolName.
+- add kind of RTTI.
 
-TODO:
+- vtable → slot classification → symbol resolution → RTTI class metadata
+- rtti_reader vtable → class metadata via COL and TypeDescriptor.
+
+## TODO:
+- ClassHierarchyDescriptor
+- BaseClassDescriptor

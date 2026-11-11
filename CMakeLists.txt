@@ -23,7 +23,9 @@ target_include_directories(vtablespp PUBLIC
 target_sources(vtablespp PRIVATE
     src/abi/msvc/abi_windows.cpp
     src/core/slot_classifier.cpp
-    src/symbols/msvc/symbol_resolver_windows.cpp)
+    src/symbols/msvc/symbol_resolver_windows.cpp
+    src/rtti/msvc/rtti_reader_windows.cpp
+    )
 
 if(MSVC)
     target_compile_definitions(vtablespp PUBLIC
