@@ -141,7 +141,7 @@ bool symbol_resolver::initialize() {
         }
     }
 
-    ::SymSetOptions(SYMOPT_UNDNAME | SYMOPT_DEFERRED_LOADS | SYMOPT_LOAD_LINES);
+    ::SymSetOptions(SYMOPT_DEFERRED_LOADS | SYMOPT_LOAD_LINES);
 
     initialized_ = true;
     return true;
