@@ -52,3 +52,13 @@ vtablespp_add_example(virtual_inheritance_ra_thunk virtual_inheritance_ra_thunk.
 
 # Other
 vtablespp_add_example(testing testing.cpp)
+
+vtablespp_add_example(symbol_resolver_demo symbol_resolver_demo.cpp)
+
+target_compile_options(symbol_resolver_demo PRIVATE
+    $<$<CXX_COMPILER_ID:MSVC>:/Zi>
+)
+
+target_link_options(symbol_resolver_demo PRIVATE
+    $<$<CXX_COMPILER_ID:MSVC>:/DEBUG>
+)
