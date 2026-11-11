@@ -45,10 +45,8 @@ public:
 
     template <class Base, class Derived>
     [[nodiscard]]
-    static vtable_view from_base(
-        const Derived& object,
-        std::size_t size
-    ) noexcept {
+    static vtable_view
+    from_base(const Derived& object, std::size_t size) noexcept {
         static_assert(
             std::is_base_of_v<Base, Derived>,
             "Base must be a base class of Derived"
@@ -60,10 +58,7 @@ public:
             static_cast<const void*>(std::addressof(base_subobject))
         );
 
-        return vtable_view{
-            static_cast<const slot_entry*>(table),
-            size
-        };
+        return vtable_view{static_cast<const slot_entry*>(table), size};
     }
 
     [[nodiscard]]
@@ -80,13 +75,19 @@ public:
     /// Does not validate whether that range describes a real vftable.
     [[nodiscard]]
     std::optional<slot_entry> at(std::size_t index) const noexcept {
-        if (index >= size_) return std::nullopt;
+        if (index >= size_)
+            return std::nullopt;
         return entries_[index];
     }
 
     [[nodiscard]]
     std::span<const slot_entry> entries() const noexcept {
         return {entries_, size_};
+    }
+
+    [[nodiscard]]
+    const slot_entry* vtable_address() const noexcept {
+        return entries_;
     }
 
 private:

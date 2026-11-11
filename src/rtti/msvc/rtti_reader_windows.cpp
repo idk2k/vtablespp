@@ -10,6 +10,12 @@
 #include "vtablespp/rtti/complete_object_locator.hpp"
 #include "vtablespp/rtti/type_descriptor.hpp"
 
+#include <cstdint>
+#include <limits>
+#include <string>
+
+#include "vtablespp/rtti/type_descriptor.hpp"
+
 #pragma comment(lib, "Dbghelp.lib")
 
 namespace vtablespp::rtti {
@@ -24,14 +30,9 @@ bool read_locator(
     complete_object_locator& locator,
     const void*& locator_address
 ) noexcept {
-    const auto* table =
-        static_cast<const void* const*>(vtable);
+    const auto* table = static_cast<const void* const*>(vtable);
 
-    if (!abi::read_memory(
-            table - 1,
-            sizeof(const void*),
-            &locator_address
-        )) {
+    if (!abi::read_memory(table - 1, sizeof(const void*), &locator_address)) {
         return false;
     }
 
@@ -39,52 +40,86 @@ bool read_locator(
         return false;
     }
 
-    return abi::read_memory(
-        locator_address,
-        sizeof(locator),
-        &locator
-    );
+    return abi::read_memory(locator_address, sizeof(locator), &locator);
 }
-
 [[nodiscard]]
 bool read_type_name(
     const void* descriptor_address,
     std::string& name
 ) {
-    const auto* descriptor =
-        static_cast<const type_descriptor*>(descriptor_address);
+    name.clear();
 
-    if (descriptor->mangled_name == nullptr) {
+    if (descriptor_address == nullptr) {
         return false;
     }
 
-    name.reserve(kMaxTypeNameLength);
+    const auto address =
+        reinterpret_cast<std::uintptr_t>(descriptor_address);
+
+    constexpr auto header_size = sizeof(type_descriptor_header);
+    constexpr auto max_address =
+        (std::numeric_limits<std::uintptr_t>::max)();
+
+    if (address > max_address - header_size - kMaxTypeNameLength) {
+        return false;
+    }
+
+    type_descriptor_header header{};
+
+    if (!abi::read_memory(
+            descriptor_address,
+            sizeof(header),
+            &header
+        ) || header.vtable == nullptr) {
+        return false;
+    }
+
+    const auto name_address = address + header_size;
+
+    std::string result;
 
     for (std::size_t i = 0; i < kMaxTypeNameLength; ++i) {
-        const char character = descriptor->mangled_name[i];
+        char character{};
 
-        if (character == '\0') {
-            return !name.empty();
+        if (!abi::read_memory(
+                reinterpret_cast<const void*>(name_address + i),
+                sizeof(character),
+                &character
+            )) {
+            return false;
         }
 
-        name.push_back(character);
+        if (character == '\0') {
+            if (result.rfind(".?AV", 0) != 0 &&
+                result.rfind(".?AU", 0) != 0) {
+                return false;
+            }
+
+            name = std::move(result);
+            return true;
+        }
+
+        result.push_back(character);
     }
 
     return false;
 }
-
 [[nodiscard]]
-std::optional<std::string> demangle(const std::string& mangled_name) {
-    if (mangled_name.size() < 2 || mangled_name.front() != '.') {
+std::optional<std::string> demangle(
+    const std::string& mangled_type_name
+) {
+    if (mangled_type_name.rfind(".?AV", 0) != 0 &&
+        mangled_type_name.rfind(".?AU", 0) != 0) {
         return std::nullopt;
     }
 
-    const char* undecorated_input = mangled_name.c_str() + 1;
+    const std::string decorated_symbol =
+        "??_R0" + mangled_type_name.substr(1) + "@8";
 
-    char buffer[1024]{};
+    char buffer[4096]{};
 
-    const auto length = ::UnDecorateSymbolName(
-        undecorated_input,
+    const DWORD length = ::UnDecorateSymbolName(
+        decorated_symbol.c_str(),
         buffer,
         static_cast<DWORD>(sizeof(buffer)),
         UNDNAME_COMPLETE
@@ -94,13 +129,31 @@ std::optional<std::string> demangle(const std::string& mangled_name) {
         return std::nullopt;
     }
 
-    return std::string{buffer, static_cast<std::size_t>(length)};
+    std::string result{buffer, static_cast<std::size_t>(length)};
+
+    const std::string suffix = " `RTTI Type Descriptor'";
+
+    if (result.size() >= suffix.size() &&
+        result.compare(
+            result.size() - suffix.size(),
+            suffix.size(),
+            suffix
+        ) == 0) {
+        result.erase(result.size() - suffix.size());
+    }
+
+    if (result.rfind("class ", 0) == 0) {
+        result.erase(0, 6);
+    } else if (result.rfind("struct ", 0) == 0) {
+        result.erase(0, 7);
+    }
+
+    return result;
 }
 
 } // namespace
 
-rtti_reader::rtti_reader(const void* vtable) noexcept
-    : vtable_(vtable) {}
+rtti_reader::rtti_reader(const void* vtable) noexcept : vtable_(vtable) {}
 
 std::optional<rtti_info> rtti_reader::read() const {
     if (vtable_ == nullptr) {
@@ -121,8 +174,7 @@ std::optional<rtti_info> rtti_reader::read() const {
     const auto locator_address_value =
         reinterpret_cast<std::uintptr_t>(locator_address);
 
-    const auto image_base =
-        locator_address_value - locator.self_rva;
+    const auto image_base = locator_address_value - locator.self_rva;
 
     const auto type_descriptor_address =
         image_base + locator.type_descriptor_rva;

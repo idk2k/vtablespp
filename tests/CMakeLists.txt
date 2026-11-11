@@ -14,6 +14,7 @@ add_executable(vtablespp_tests
     slot_classifier_test.cpp
     msvc_vtable_test.cpp
     symbol_resolver_test.cpp
+    rtti_reader_test.cpp
 )
 
 if(MSVC)
@@ -22,7 +23,7 @@ if(MSVC)
 
     target_link_options(vtablespp_tests PRIVATE
         /INCREMENTAL:NO)
-        
+
     target_compile_options(vtablespp_tests PRIVATE
         $<$<CXX_COMPILER_ID:MSVC>:/Zi>
     )

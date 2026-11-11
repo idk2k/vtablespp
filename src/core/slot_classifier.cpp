@@ -430,7 +430,8 @@ void slot_classifier::resolve_rtti(slot_info& info) const noexcept {
         return;
     }
 
-    const auto metadata = rtti_->read();
+    const rtti::rtti_reader reader{table_.vtable_address()};
+    const auto metadata = reader.read();
 
     if (!metadata.has_value()) {
         return;
