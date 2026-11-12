@@ -83,4 +83,10 @@ imageBase = address_of_COL_in_memory − COL.pSelf
 
 then translate every other RVA. This is why RTTI still resolves correctly in dumped/rebased binaries.
 
+4) How dynamic_cast actually consumes it
+
+Reads vfptr from the object → goes to slot [-1] → gets the COL.
+Takes pClassDescriptor → walks the BaseClassArray, comparing each BCD's TypeDescriptor against the target type's descriptor (pointer compare — descriptors are unique per type).
+If found: computes the adjusted this using the PMD displacements (+ offset for cross-casts) → returns the properly shifted pointer. If not found: returns nullptr (and throws for references).
+typeid is the same flow minus steps 2–3: straight to pTypeDescriptor.
 
