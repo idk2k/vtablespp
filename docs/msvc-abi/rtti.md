@@ -90,3 +90,17 @@ Takes pClassDescriptor → walks the BaseClassArray, comparing each BCD's TypeDe
 If found: computes the adjusted this using the PMD displacements (+ offset for cross-casts) → returns the properly shifted pointer. If not found: returns nullptr (and throws for references).
 typeid is the same flow minus steps 2–3: straight to pTypeDescriptor.
 
+5) The RE workflow this enables
+
+Since RTTI is a self-describing linked graph in .rdata, you can reconstruct the whole class layout from a stripped binary:
+
+Find TypeDescriptors — search for .?AV / .?AU strings (each = one class).
+Find what references each TD → those are BCDs → BCDs are collected in a BaseClassArray → referenced by a CHD → referenced by the COL.
+Scan the image for pointers (x86: VA, x64: RVA) to each COL — wherever it's found, it's at vftable[-1], so you've just located that class's vftable → rename it Cat::vftable', map the class hierarchy, and every call [vftable+0x10] now becomes a named virtual function.
+IDA's Class Informer plugin automates exactly this scan; there are also standalone RTTI-scanner scripts, and you can do it manually in x64dbg by navigating TD → COL → vftable. When RTTI survives, it's the cheapest full class-map recovery there is — packers often leave it intact because stripping it means breaking dynamic_cast.
+
+TL;DR:
+
+Yes: COL = the pointer at vftable[-1] (MSVC; GCC keeps typeinfo at -1 / offset-to-top at -2 instead).
+COL is the root of a 4-struct graph: COL → TypeDescriptor (the name) and COL → CHD → BCD[] (the hierarchy + this-adjustment math).
+x64 swaps VAs for RVAs + adds pSelf, so RTTI is base-independent — which is exactly why it survives dumps so well.
