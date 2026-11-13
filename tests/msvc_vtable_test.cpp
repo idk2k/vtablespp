@@ -37,7 +37,10 @@ TEST(MsvcVTable, SharedOverrideCreatesSecondaryThisAdjustor) {
     const auto info = classifier.inspect(0);
 
     EXPECT_EQ(info.kind, slot_kind::this_adjustor);
-    EXPECT_EQ(info.this_adjustment, sizeof(void*));
+    EXPECT_EQ(
+        info.this_adjustment,
+        -static_cast<std::ptrdiff_t>(sizeof(void*))
+    );
     ASSERT_TRUE(info.final_target.has_value());
 }
 

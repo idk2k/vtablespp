@@ -15,8 +15,8 @@ using namespace vtablespp_test;
 using vtablespp::direct_evidence;
 using vtablespp::slot_classifier;
 using vtablespp::slot_kind;
-using vtablespp::symbols::symbol_resolver;
 using vtablespp::vtable_view;
+using vtablespp::symbols::symbol_resolver;
 
 TEST(SymbolResolver, InitializeSucceeds) {
     symbol_resolver resolver;
@@ -30,8 +30,7 @@ TEST(SymbolResolver, ResolveDirectMethod) {
     auto resolver = std::make_shared<symbol_resolver>();
     ASSERT_TRUE(resolver->initialize());
 
-    const auto secondary =
-        vtable_view::from_base<SeparateRight>(object, 1);
+    const auto secondary = vtable_view::from_base<SeparateRight>(object, 1);
 
     const slot_classifier classifier{secondary, resolver};
     const auto info = classifier.inspect(0);
@@ -45,10 +44,7 @@ TEST(SymbolResolver, ResolveDirectMethod) {
 
     EXPECT_EQ(info.symbol_displacement, 0u);
 
-    EXPECT_NE(
-        info.demangled_name->find("SeparateRight::Q"),
-        std::string::npos
-    );
+    EXPECT_NE(info.demangled_name->find("SeparateRight::Q"), std::string::npos);
 }
 
 TEST(SymbolResolver, ResolveThunkTarget) {
@@ -71,23 +67,22 @@ TEST(SymbolResolver, ResolveThunkTarget) {
     auto resolver = std::make_shared<symbol_resolver>();
     ASSERT_TRUE(resolver->initialize());
 
-    const auto secondary =
-        vtable_view::from_base<Right>(object, 1);
+    const auto secondary = vtable_view::from_base<Right>(object, 1);
 
     const slot_classifier classifier{secondary, resolver};
     const auto info = classifier.inspect(0);
 
     EXPECT_EQ(info.kind, slot_kind::this_adjustor);
-    EXPECT_EQ(info.this_adjustment, sizeof(void*));
+    EXPECT_EQ(
+        info.this_adjustment,
+        -static_cast<std::ptrdiff_t>(sizeof(void*))
+    );
     ASSERT_TRUE(info.final_target.has_value());
 
     ASSERT_TRUE(info.symbol_name.has_value());
     ASSERT_TRUE(info.demangled_name.has_value());
 
-    EXPECT_NE(
-        info.demangled_name->find("Derived::Q"),
-        std::string::npos
-    );
+    EXPECT_NE(info.demangled_name->find("Derived::Q"), std::string::npos);
 }
 
 static void SomeTestFunction() {}
@@ -96,9 +91,8 @@ TEST(SymbolResolver, ResolvesKnownFunction) {
     symbol_resolver resolver;
     ASSERT_TRUE(resolver.initialize());
 
-    const auto symbol = resolver.resolve(
-        reinterpret_cast<const void*>(&SomeTestFunction)
-    );
+    const auto symbol =
+        resolver.resolve(reinterpret_cast<const void*>(&SomeTestFunction));
 
     ASSERT_TRUE(symbol.has_value())
         << "SymFromAddr failed; check PDB generation/loading";

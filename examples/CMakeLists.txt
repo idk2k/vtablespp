@@ -62,3 +62,6 @@ target_compile_options(symbol_resolver_demo PRIVATE
 target_link_options(symbol_resolver_demo PRIVATE
     $<$<CXX_COMPILER_ID:MSVC>:/DEBUG>
 )
+
+# ---
+vtablespp_add_example(vtable_size_detection vtable_size_detection.cpp)

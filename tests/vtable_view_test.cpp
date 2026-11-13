@@ -1,8 +1,9 @@
 #include <gtest/gtest.h>
-
 #include <optional>
 
 #include <vtablespp/vtablespp.hpp>
+#include <vtablespp/core/slot_classifier.hpp>
+#include <vtablespp/core/slot_info.hpp>
 #include <vtablespp/core/vtable.hpp>
 
 #include "fixtures.hpp"
@@ -20,8 +21,7 @@ TEST(VTable, PolymorphicObjectHasNonZeroVTable) {
 TEST(VTable, SingleInheritancePrimaryTableIsAccessible) {
     SingleDerived object;
 
-    const auto view =
-        vtablespp::vtable_view::from_object(object, 3);
+    const auto view = vtablespp::vtable_view::from_object(object, 3);
 
     EXPECT_FALSE(view.empty());
     EXPECT_EQ(view.size(), 3u);
@@ -40,10 +40,7 @@ TEST(VTableView, ExposesSuppliedEntries) {
     int first = 0;
     int second = 0;
 
-    const vtablespp::vtable_view::slot_entry entries[] = {
-        &first,
-        &second
-    };
+    const vtablespp::vtable_view::slot_entry entries[] = {&first, &second};
 
     const vtablespp::vtable_view view{entries, 2};
 
@@ -58,27 +55,21 @@ TEST(VTableView, ExposesSuppliedEntries) {
 TEST(VTable, MultipleInheritanceExposesBothBaseTables) {
     MultiDerived object;
 
-    const auto primary =
-        vtablespp::vtable_view::from_object(object, 1);
+    const auto primary = vtablespp::vtable_view::from_object(object, 1);
 
-    const auto secondary =
-        vtablespp::vtable_view::from_base<Right>(object, 1);
+    const auto secondary = vtablespp::vtable_view::from_base<Right>(object, 1);
 
     ASSERT_NE(primary.entries().data(), nullptr);
     ASSERT_NE(secondary.entries().data(), nullptr);
 
-    EXPECT_NE(
-        primary.entries().data(),
-        secondary.entries().data()
-    );
+    EXPECT_NE(primary.entries().data(), secondary.entries().data());
 }
 
 // ============ size detection ==================
 TEST(VTable, DetectsPrimaryVtableSize) {
     SingleDerived object;
 
-    const auto view =
-        vtablespp::vtable_view::from_object_auto(object);
+    const auto view = vtablespp::vtable_view::from_object_auto(object);
 
     EXPECT_FALSE(view.empty());
     EXPECT_GT(view.size(), 0u);
@@ -104,6 +95,75 @@ TEST(VTable, DetectsSecondaryVtableSize) {
     }
 
     EXPECT_EQ(secondary.at(secondary.size()), std::nullopt);
+}
+
+namespace {
+struct Dog final {
+    virtual ~Dog() = default;
+    virtual const char* name() const {
+        return "Dog";
+    }
+};
+
+struct TestLeft {
+    virtual ~TestLeft() = default;
+    virtual int left() const {
+        return 1;
+    }
+};
+
+struct TestRight {
+    virtual ~TestRight() = default;
+    virtual int right() const {
+        return 2;
+    }
+};
+
+struct TestMulti final : TestLeft, TestRight {
+    int left() const override {
+        return 10;
+    }
+
+    int right() const override {
+        return 20;
+    }
+};
+} // namespace
+
+TEST(VTable, DetectsPrimaryVtableSize_Two) {
+    Dog object;
+
+    const auto view = vtablespp::vtable_view::from_object_auto(object);
+
+    EXPECT_FALSE(view.empty());
+    EXPECT_EQ(view.size(), 2u);
+
+    EXPECT_TRUE(view.at(0).has_value());
+    EXPECT_TRUE(view.at(1).has_value());
+    EXPECT_EQ(view.at(2), std::nullopt);
+}
+
+TEST(VTable, DetectsSecondaryVtableSize_Two) {
+    TestMulti object;
+
+    const auto secondary =
+        vtablespp::vtable_view::from_base_auto<TestRight>(object);
+
+    EXPECT_FALSE(secondary.empty());
+    EXPECT_EQ(secondary.size(), 2u);
+
+    EXPECT_TRUE(secondary.at(0).has_value());
+    EXPECT_TRUE(secondary.at(1).has_value());
+    EXPECT_EQ(secondary.at(2), std::nullopt);
+
+    const vtablespp::slot_classifier classifier{secondary};
+    const auto info = classifier.inspect(0);
+
+    EXPECT_EQ(info.kind, vtablespp::slot_kind::this_adjustor);
+    EXPECT_EQ(
+        info.this_adjustment,
+        -static_cast<std::ptrdiff_t>(sizeof(void*))
+    );
 }
 
 } // namespace

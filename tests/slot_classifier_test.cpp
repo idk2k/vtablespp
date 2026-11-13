@@ -85,27 +85,23 @@ constexpr unsigned char kMsvcVirtualReturnAdjustor[] = {
 
 TEST(SlotClassifier, SmallThisAdjustorIsRecognized) {
     const vtable_view::slot_entry entries[] = {kSmallThisAdjustor};
-
     const vtable_view view{entries, 1};
     const slot_classifier classifier{view};
-
     const slot_info info = classifier.inspect(0);
 
     EXPECT_EQ(info.kind, slot_kind::this_adjustor);
-    EXPECT_EQ(info.this_adjustment, 8);
+    EXPECT_EQ(info.this_adjustment, -8);
     ASSERT_TRUE(info.final_target.has_value());
 }
 
 TEST(SlotClassifier, LargeThisAdjustorIsRecognized) {
     const vtable_view::slot_entry entries[] = {kLargeThisAdjustor};
-
     const vtable_view view{entries, 1};
     const slot_classifier classifier{view};
-
     const slot_info info = classifier.inspect(0);
 
     EXPECT_EQ(info.kind, slot_kind::this_adjustor);
-    EXPECT_EQ(info.this_adjustment, 0x12345678);
+    EXPECT_EQ(info.this_adjustment, -0x12345678);
     ASSERT_TRUE(info.final_target.has_value());
 }
 

@@ -75,13 +75,14 @@ thunk_match match_this_adjustor(const void* entry) noexcept {
 
     if (p[0] == 0x48 && p[1] == 0x83 && p[2] == 0xE9) {
         prefix_size = 4;
-        adjustment = static_cast<std::int8_t>(p[3]);
+        adjustment =
+            -static_cast<std::ptrdiff_t>(static_cast<std::int8_t>(p[3]));
     } else if (p[0] == 0x48 && p[1] == 0x81 && p[2] == 0xE9) {
         prefix_size = 7;
 
         std::int32_t raw = 0;
         std::memcpy(&raw, p + 3, sizeof(raw));
-        adjustment = raw;
+        adjustment = -static_cast<std::ptrdiff_t>(raw);
     } else {
         return result;
     }
@@ -445,9 +446,7 @@ void slot_classifier::resolve_rtti(slot_info& info) const noexcept {
 slot_info slot_classifier::inspect(std::size_t index) const noexcept {
     const auto entry = table_.at(index);
 
-    slot_info info = entry.has_value()
-        ? classify_entry(*entry)
-        : slot_info{};
+    slot_info info = entry.has_value() ? classify_entry(*entry) : slot_info{};
 
     resolve_rtti(info);
 
