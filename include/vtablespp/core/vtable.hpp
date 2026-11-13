@@ -95,4 +95,41 @@ private:
     std::size_t size_ = 0;
 };
 
+template <class T>
+[[nodiscard]]
+static vtable_view from_object_auto(const T& object) noexcept {
+    static_assert(
+        std::is_polymorphic_v<T>,
+        "vtable_view requires a polymorphic type"
+    );
+
+    const void* table =
+        abi::vtable_of(static_cast<const void*>(std::addressof(object)));
+
+    return vtable_view{
+        static_cast<const slot_entry*>(table),
+        abi::vtable_size(table)
+    };
+}
+
+template <class Base, class Derived>
+[[nodiscard]]
+static vtable_view from_base_auto(const Derived& object) noexcept {
+    static_assert(
+        std::is_base_of_v<Base, Derived>,
+        "Base must be a base class of Derived"
+    );
+
+    const Base& base_subobject = static_cast<const Base&>(object);
+
+    const void* table = vtablespp::abi::vtable_of(
+        static_cast<const void*>(std::addressof(base_subobject))
+    );
+
+    return vtable_view{
+        static_cast<const slot_entry*>(table),
+        abi::vtable_size(table)
+    };
+}
+
 } // namespace vtablespp

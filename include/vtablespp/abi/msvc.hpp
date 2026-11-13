@@ -45,4 +45,7 @@ bool read_memory(
     void* destination
 ) noexcept;
 
+[[nodiscard]]
+std::size_t vtable_size(const void* vtable) noexcept;
+
 } // namespace vtablespp::abi

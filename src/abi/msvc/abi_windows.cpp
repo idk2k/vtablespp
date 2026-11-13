@@ -78,5 +78,83 @@ bool read_code(
     return read_memory(address, size, destination);
 }
 
+namespace {
+
+[[nodiscard]]
+bool is_executable_protection(DWORD protect) noexcept {
+    switch (protect) {
+    case PAGE_EXECUTE:
+    case PAGE_EXECUTE_READ:
+    case PAGE_EXECUTE_READWRITE:
+    case PAGE_EXECUTE_WRITECOPY:
+        return true;
+    default:
+        return false;
+    }
+}
+
+[[nodiscard]]
+bool points_to_code(const void* address) noexcept {
+    if (address == nullptr) {
+        return false;
+    }
+
+    MEMORY_BASIC_INFORMATION info{};
+    if (::VirtualQuery(address, &info, sizeof(info)) != sizeof(info)) {
+        return false;
+    }
+
+    if (info.State != MEM_COMMIT ||
+        !is_executable_protection(info.Protect)) {
+        return false;
+    }
+
+    unsigned char first_byte = 0;
+    return read_code(address, sizeof(first_byte), &first_byte);
+}
+
+}
+
+std::size_t vtable_size(const void* vtable) noexcept {
+    if (vtable == nullptr) {
+        return 0;
+    }
+
+    const auto* entries = static_cast<const void* const*>(vtable);
+
+    MEMORY_BASIC_INFORMATION table_info{};
+    if (::VirtualQuery(vtable, &table_info, sizeof(table_info)) !=
+        sizeof(table_info)) {
+        return 0;
+    }
+
+    if (table_info.State != MEM_COMMIT) {
+        return 0;
+    }
+
+    const auto* table_begin =
+        static_cast<const unsigned char*>(table_info.BaseAddress);
+    const auto* table_end = table_begin + table_info.RegionSize;
+    const auto* current = static_cast<const unsigned char*>(vtable);
+
+    std::size_t size = 0;
+
+    while (current + sizeof(const void*) <= table_end) {
+        const void* entry = nullptr;
+
+        if (!read_memory(current, sizeof(entry), &entry)) {
+            break;
+        }
+
+        if (!points_to_code(entry)) {
+            break;
+        }
+
+        ++size;
+        current += sizeof(const void*);
+    }
+
+    return size;
+}
 
 } // namespace vtablespp::abi
