@@ -128,6 +128,7 @@ https://github.com/microsoft/vscode-cmake-tools/commit/8867be5cfe26d08c44a8c7d03
 [11/13/2026]
 
 + vftable size detection
++ basic slot hooking
 
 ## TODO:
 1. safe inspect_vtable / describe API (which connect vtable_view, slot_classifier, symbol_resolver, rtti_reader)
@@ -136,5 +137,4 @@ https://github.com/microsoft/vscode-cmake-tools/commit/8867be5cfe26d08c44a8c7d03
 4. add new abi support (itanium abi for clang/gcc)
 5. safe call_slot wrapper
 
-- hooking (last)
 - virtual inheritance (with thunk support - it uses vbtable)
