@@ -168,7 +168,8 @@ hook.install(
 2. Saves the current vtable entry as the original entry.
 3. Creates a context for the object address.
 4. Stores the original entry and the user lambda in the context.
-5. Writes the address of `thunk_entry` into the vtable slot.
+5. Saves the original entry as the fallback for objects without a context.
+6. Writes the address of `thunk_entry` into the vtable slot.
 
 ```text
 before:
@@ -192,14 +193,9 @@ thunk_entry(object, a, b)
         v
 find context by object
         |
-        v
-user lambda
+        +--> context found -> user lambda
         |
-        v
-context.call_original_raw(object, a, b)
-        |
-        v
-Calculator::add
+        +--> context not found -> fallback original entry
 ```
 
 The thunk receives:
@@ -210,19 +206,96 @@ int& a
 int& b
 ```
 
-It looks up a context by the `object` address. If a context is found, the thunk calls the user lambda.
+It looks up a context by the `object` address.
 
-The lambda can:
+If a context is found, the thunk calls the user lambda.
 
-- modify `a` and `b`;
-- execute code before the original method;
-- call the original method;
-- execute code after the original method;
-- modify the return value.
+If no context is found, the thunk calls the fallback original entry.
 
-### Calling the original
+## Fallback behavior
 
-The original entry is stored in the context:
+A stateful hook changes a vtable slot that is shared by every object of the class. Therefore, the thunk must know what to do for objects that do not have their own hook context.
+
+`stateful_slot_hook` stores three static fallback values:
+
+```cpp
+static const void* fallback_original_entry;
+static const void* fallback_vtable_address;
+static std::size_t fallback_slot_index;
+```
+
+- `fallback_original_entry` stores the original vtable function pointer.
+- `fallback_vtable_address` stores the address of the hooked vtable.
+- `fallback_slot_index` stores the hooked slot index.
+
+During `install()`, the original entry is saved both in the object-specific context and in the static fallback fields:
+
+```cpp
+storage->original_entry = *entry;
+storage->hook = std::forward<Callback>(callback);
+
+fallback_original_entry = *entry;
+fallback_vtable_address = table.vtable_address();
+fallback_slot_index = index;
+```
+
+When the thunk cannot find a context for an object, it calls the fallback original entry:
+
+```text
+unhooked object
+        |
+        v
+thunk_entry
+        |
+        v
+context not found
+        |
+        v
+fallback_original_entry
+        |
+        v
+original virtual method
+```
+
+This allows one object to have a stateful hook while all other objects of the same class continue using the original method.
+
+### Example
+
+```cpp
+Calculator hooked_calculator;
+Calculator unhooked_calculator;
+
+hook.install(
+    table,
+    1,
+    hooked_calculator,
+    lambda
+);
+```
+
+The behavior is:
+
+```text
+hooked_calculator -> context found -> lambda
+unhooked_calculator -> context not found -> original Calculator::add
+```
+
+### Fallback limitation
+
+The fallback stores one original entry per hook signature. Therefore, this sequence:
+
+```cpp
+hook_a.install(table_a, 1, object_a, lambda_a);
+hook_b.install(table_b, 1, object_b, lambda_b);
+```
+
+overwrites the fallback created by `hook_a` if both hooks use the same signature.
+
+For the common case of one target class, one vtable, and one slot, this is sufficient. Supporting several simultaneous fallbacks requires a per-object vtable copy or a registry keyed by `(vtable address, slot index)`.
+
+## Calling the original
+
+The original entry is stored in the object-specific context:
 
 ```cpp
 const void* original_entry;
@@ -304,25 +377,11 @@ Calculator b;
 hook.install(table, 1, a, lambda);
 ```
 
-Now both objects call `thunk_entry`. For `a`, the thunk finds a context and calls the lambda. For `b`, no context currently exists, so an exception is thrown.
+Both objects now call `thunk_entry`. For `a`, the thunk finds a context and calls the lambda. For `b`, no context exists, so the thunk calls the fallback original entry.
 
-### No fallback yet
+### One active fallback per signature
 
-The current thunk throws an exception when no context is found:
-
-```cpp
-throw std::runtime_error(
-    "stateful hook context was not found"
-);
-```
-
-The next step is to store the original entry using this key:
-
-```text
-vtable address + slot index -> original entry
-```
-
-Then the thunk can call the original method for objects without a context.
+The current fallback stores one original entry per `stateful_slot_hook<Signature>` instantiation. Installing another hook with the same signature for a different vtable or slot overwrites the previous fallback.
 
 ### Object lifetime
 
@@ -338,18 +397,4 @@ Otherwise, a dangling pointer remains in the registry. Reuse of the same memory 
 
 The registry is protected by a `std::mutex`, but this does not make the entire hook fully thread-safe:
 
-- installing and uninstalling a hook modifies the vtable;
-- the vtable may be used by multiple threads;
-- the user lambda must also be thread-safe if the method can be called concurrently.
-
-## Current test
-
-`tests/stateful_slot_hook_test.cpp` verifies:
-
-- installation of a stateful hook;
-- invocation of the user lambda;
-- capture of lambda state;
-- modification of reference arguments;
-- invocation of the original method;
-- restoration of the original entry after `uninstall()`;
-- rejection of a second hook installation for the same object.
+-

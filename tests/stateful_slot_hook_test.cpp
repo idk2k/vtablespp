@@ -20,8 +20,7 @@ struct Calculator {
 TEST(StatefulSlotHook, CapturesStateAndCallsOriginal) {
     Calculator calculator;
 
-    const auto table =
-        vtable_view::from_object(calculator, 2);
+    const auto table = vtable_view::from_object(calculator, 2);
 
     stateful_slot_hook<int(int&, int&)> hook;
 
@@ -46,12 +45,7 @@ TEST(StatefulSlotHook, CapturesStateAndCallsOriginal) {
     int b = 2;
 
     const int result =
-        vtablespp::call_slot<int(int&, int&)>(
-            calculator,
-            1,
-            a,
-            b
-        );
+        vtablespp::call_slot<int(int&, int&)>(calculator, 1, a, b);
 
     EXPECT_EQ(a, 10);
     EXPECT_EQ(b, 20);
@@ -62,15 +56,7 @@ TEST(StatefulSlotHook, CapturesStateAndCallsOriginal) {
     a = 1;
     b = 2;
 
-    EXPECT_EQ(
-        vtablespp::call_slot<int(int&, int&)>(
-            calculator,
-            1,
-            a,
-            b
-        ),
-        3
-    );
+    EXPECT_EQ(vtablespp::call_slot<int(int&, int&)>(calculator, 1, a, b), 3);
 
     EXPECT_EQ(a, 1);
     EXPECT_EQ(b, 2);
@@ -79,8 +65,7 @@ TEST(StatefulSlotHook, CapturesStateAndCallsOriginal) {
 TEST(StatefulSlotHook, RejectsSecondHookForSameObject) {
     Calculator calculator;
 
-    const auto table =
-        vtable_view::from_object(calculator, 2);
+    const auto table = vtable_view::from_object(calculator, 2);
 
     stateful_slot_hook<int(int&, int&)> first;
     stateful_slot_hook<int(int&, int&)> second;
@@ -117,4 +102,65 @@ TEST(StatefulSlotHook, RejectsSecondHookForSameObject) {
     second.uninstall();
 }
 
+TEST(StatefulSlotHook, UnhookedObjectCallsOriginalThroughFallback) {
+    Calculator hooked_calculator;
+    Calculator unhooked_calculator;
+
+    const auto table = vtable_view::from_object(hooked_calculator, 2);
+
+    stateful_slot_hook<int(int&, int&)> hook;
+
+    ASSERT_TRUE(hook.install(
+        table,
+        1,
+        hooked_calculator,
+        [multiplier = 10](
+            vtablespp::slot_context<int(int&, int&)>& context,
+            void* object,
+            int& a,
+            int& b
+        ) {
+            a *= multiplier;
+            b *= multiplier;
+
+            return context.call_original_raw(object, a, b);
+        }
+    ));
+
+    int a = 1;
+    int b = 2;
+
+    EXPECT_EQ(
+        vtablespp::call_slot<int(int&, int&)>(unhooked_calculator, 1, a, b),
+        3
+    );
+
+    EXPECT_EQ(a, 1);
+    EXPECT_EQ(b, 2);
+
+    a = 1;
+    b = 2;
+
+    EXPECT_EQ(
+        vtablespp::call_slot<int(int&, int&)>(hooked_calculator, 1, a, b),
+        30
+    );
+
+    EXPECT_EQ(a, 10);
+    EXPECT_EQ(b, 20);
+
+    hook.uninstall();
+
+    a = 1;
+    b = 2;
+
+    EXPECT_EQ(
+        vtablespp::call_slot<int(int&, int&)>(hooked_calculator, 1, a, b),
+        3
+    );
+
+    EXPECT_EQ(a, 1);
+    EXPECT_EQ(b, 2);
 }
+
+} // namespace
