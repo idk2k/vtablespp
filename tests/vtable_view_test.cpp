@@ -73,4 +73,37 @@ TEST(VTable, MultipleInheritanceExposesBothBaseTables) {
     );
 }
 
+// ============ size detection ==================
+TEST(VTable, DetectsPrimaryVtableSize) {
+    SingleDerived object;
+
+    const auto view =
+        vtablespp::vtable_view::from_object_auto(object);
+
+    EXPECT_FALSE(view.empty());
+    EXPECT_GT(view.size(), 0u);
+
+    for (std::size_t index = 0; index < view.size(); ++index) {
+        EXPECT_TRUE(view.at(index).has_value());
+    }
+
+    EXPECT_EQ(view.at(view.size()), std::nullopt);
+}
+
+TEST(VTable, DetectsSecondaryVtableSize) {
+    MultiDerived object;
+
+    const auto secondary =
+        vtablespp::vtable_view::from_base_auto<Right>(object);
+
+    EXPECT_FALSE(secondary.empty());
+    EXPECT_GT(secondary.size(), 0u);
+
+    for (std::size_t index = 0; index < secondary.size(); ++index) {
+        EXPECT_TRUE(secondary.at(index).has_value());
+    }
+
+    EXPECT_EQ(secondary.at(secondary.size()), std::nullopt);
+}
+
 } // namespace
