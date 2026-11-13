@@ -31,36 +31,22 @@ struct slot_hook_function<Return(Args...) noexcept> {
     using type = Return (*)(void*, Args...) noexcept;
 };
 
+} // namespace detail
+
 template <class Signature>
-struct slot_hook_callback;
+class slot_context;
 
 template <class Return, class... Args>
-struct slot_hook_callback<Return(Args...)> {
-    using type =
-        Return(slot_context<Return(Args...)>&, void*, Args...);
-};
-
-template <class Return, class... Args>
-struct slot_hook_callback<Return(Args...) noexcept> {
-    using type =
-        Return(slot_context<Return(Args...)>&, void*, Args...);
-};
-
-}
-
-template <class Signature>
-class stateful_slot_hook;
-
-template <class Signature>
-class slot_context {
+class slot_context<Return(Args...)> {
 public:
-    using function_type = typename detail::slot_hook_function<Signature>::type;
+    using function_type =
+        typename detail::slot_hook_function<Return(Args...)>::type;
 
-    slot_context(const void* original_entry) noexcept
+    explicit slot_context(const void* original_entry) noexcept
         : original_entry_(original_entry) {}
 
-    template <class T, class... Args>
-    decltype(auto) call_original(T& object, Args&&... args) const {
+    template <class T, class... CallArgs>
+    decltype(auto) call_original(T& object, CallArgs&&... call_args) const {
         static_assert(
             std::is_polymorphic_v<std::remove_cv_t<T>>,
             "call_original requires a polymorphic type"
@@ -75,8 +61,21 @@ public:
 
         return function(
             detail::mutable_object_address(object),
-            std::forward<Args>(args)...
+            std::forward<CallArgs>(call_args)...
         );
+    }
+
+    template <class... CallArgs>
+    decltype(auto)
+    call_original_raw(void* object, CallArgs&&... call_args) const {
+        if (original_entry_ == nullptr) {
+            throw std::runtime_error("original vtable slot is not available");
+        }
+
+        const auto function =
+            reinterpret_cast<function_type>(const_cast<void*>(original_entry_));
+
+        return function(object, std::forward<CallArgs>(call_args)...);
     }
 
     [[nodiscard]]
@@ -89,14 +88,17 @@ private:
 };
 
 template <class Signature>
-class stateful_slot_hook {
+class stateful_slot_hook;
+
+template <class Return, class... Args>
+class stateful_slot_hook<Return(Args...)> {
 public:
-    using function_type = typename detail::slot_hook_function<Signature>::type;
+    using function_type =
+        typename detail::slot_hook_function<Return(Args...)>::type;
 
-    using context_type = slot_context<Signature>;
+    using context_type = slot_context<Return(Args...)>;
 
-    using callback_type =
-        std::function<typename detail::slot_hook_callback<Signature>::type>;
+    using callback_type = std::function<Return(context_type&, void*, Args...)>;
 
     stateful_slot_hook() noexcept = default;
 
@@ -157,28 +159,30 @@ public:
 
         void* object_address = detail::mutable_object_address(object);
 
-        auto& contexts = contexts();
+        auto& contexts = hook_contexts();
 
         if (contexts.find(object_address) != contexts.end()) {
             return false;
         }
 
         const auto entry = table.at(index);
+
         if (!entry.has_value() || *entry == nullptr) {
             return false;
         }
 
         const auto purecall = abi::purecall_address();
+
         if (purecall.has_value() && *entry == *purecall) {
             return false;
         }
 
-        auto context = std::make_shared<context_type>(*entry);
+        auto storage = std::make_shared<context_storage>();
 
-        context->hook = std::forward<Callback>(callback);
+        storage->original_entry = *entry;
+        storage->hook = std::forward<Callback>(callback);
 
-        const void* thunk =
-            reinterpret_cast<const void*>(&stateful_slot_hook::thunk);
+        const void* thunk = reinterpret_cast<const void*>(&thunk_entry);
 
         if (!abi::write_memory(
                 table.vtable_address() + index,
@@ -188,9 +192,7 @@ public:
             return false;
         }
 
-        contexts.emplace(object_address, std::move(context));
-
-        originals()[{table.vtable_address(), index}] = *entry;
+        contexts.emplace(object_address, std::move(storage));
 
         table_ = table;
         index_ = index;
@@ -208,14 +210,14 @@ public:
             return;
         }
 
-        auto& contexts = contexts();
-        auto context = contexts.find(object_);
+        auto& contexts = hook_contexts();
+        const auto found = contexts.find(object_);
 
         const void* original = original_;
 
-        if (context != contexts.end()) {
-            original = context->second->original_entry();
-            contexts.erase(context);
+        if (found != contexts.end()) {
+            original = found->second->original_entry;
+            contexts.erase(found);
         }
 
         if (abi::write_memory(
@@ -251,27 +253,9 @@ private:
 
     using context_map = std::unordered_map<void*, context_ptr>;
 
-    using original_key = std::pair<const void*, std::size_t>;
-
-    using original_map = std::unordered_map<original_key, const void*>;
-
-    struct original_key_hash {
-        std::size_t operator()(const original_key& key) const noexcept {
-            const auto left = reinterpret_cast<std::uintptr_t>(key.first);
-            const auto right = static_cast<std::uintptr_t>(key.second);
-
-            return left ^ (right << 1);
-        }
-    };
-
-    static context_map& contexts() {
+    static context_map& hook_contexts() {
         static context_map instances;
         return instances;
-    }
-
-    static original_map& originals() {
-        static original_map entries;
-        return entries;
     }
 
     static std::mutex& mutex() {
@@ -279,18 +263,15 @@ private:
         return instance;
     }
 
-    static Return thunk(void* object, Args... args) {
-        return dispatch(object, std::forward<Args>(args)...);
-    }
-
-    static Return dispatch(void* object, Args... args) {
+    static Return thunk_entry(void* object, Args... args) {
         context_ptr context;
 
         {
             std::scoped_lock lock{mutex()};
-            const auto found = contexts().find(object);
 
-            if (found != contexts().end()) {
+            const auto found = hook_contexts().find(object);
+
+            if (found != hook_contexts().end()) {
                 context = found->second;
             }
         }
@@ -303,4 +284,12 @@ private:
 
         return context->hook(context_view, object, args...);
     }
+
+    vtable_view table_;
+    std::size_t index_ = 0;
+    void* object_ = nullptr;
+    const void* original_ = nullptr;
+    bool installed_ = false;
 };
+
+} // namespace vtablespp
