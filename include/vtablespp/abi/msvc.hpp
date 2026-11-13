@@ -46,6 +46,13 @@ bool read_memory(
 ) noexcept;
 
 [[nodiscard]]
+bool write_memory(
+    const void* address,
+    std::size_t size,
+    const void* source
+) noexcept;
+
+[[nodiscard]]
 std::size_t vtable_size(const void* vtable) noexcept;
 
 } // namespace vtablespp::abi

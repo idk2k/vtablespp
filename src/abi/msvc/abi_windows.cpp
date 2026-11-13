@@ -157,4 +157,60 @@ std::size_t vtable_size(const void* vtable) noexcept {
     return size;
 }
 
+bool write_memory(
+    const void* address,
+    std::size_t size,
+    const void* source
+) noexcept {
+    if (address == nullptr || source == nullptr || size == 0) {
+        return false;
+    }
+
+    MEMORY_BASIC_INFORMATION info{};
+    if (::VirtualQuery(address, &info, sizeof(info)) != sizeof(info)) {
+        return false;
+    }
+
+    if (info.State != MEM_COMMIT) {
+        return false;
+    }
+
+    DWORD old_protect = 0;
+    if (!::VirtualProtect(
+            const_cast<void*>(address),
+            size,
+            PAGE_READWRITE,
+            &old_protect
+        )) {
+        return false;
+    }
+
+    const bool copied = [&] {
+        __try {
+            std::memcpy(
+                const_cast<void*>(address),
+                source,
+                size
+            );
+            return true;
+        } __except (
+            GetExceptionCode() == EXCEPTION_ACCESS_VIOLATION
+                ? EXCEPTION_EXECUTE_HANDLER
+                : EXCEPTION_CONTINUE_SEARCH
+        ) {
+            return false;
+        }
+    }();
+
+    DWORD ignored = 0;
+    ::VirtualProtect(
+        const_cast<void*>(address),
+        size,
+        old_protect,
+        &ignored
+    );
+
+    return copied;
+}
+
 } // namespace vtablespp::abi
