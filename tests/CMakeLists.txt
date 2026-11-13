@@ -15,6 +15,7 @@ add_executable(vtablespp_tests
     msvc_vtable_test.cpp
     symbol_resolver_test.cpp
     rtti_reader_test.cpp
+    slot_hook_test.cpp
 )
 
 if(MSVC)
