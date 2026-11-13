@@ -182,6 +182,10 @@ public:
         storage->original_entry = *entry;
         storage->hook = std::forward<Callback>(callback);
 
+        fallback_original_entry = *entry;
+        fallback_vtable_address = table.vtable_address();
+        fallback_slot_index = index;
+
         const void* thunk = reinterpret_cast<const void*>(&thunk_entry);
 
         if (!abi::write_memory(
@@ -210,6 +214,9 @@ public:
             return;
         }
 
+        const auto current_table_address = table_.vtable_address();
+        const auto current_index = index_;
+
         auto& contexts = hook_contexts();
         const auto found = contexts.find(object_);
 
@@ -221,10 +228,17 @@ public:
         }
 
         if (abi::write_memory(
-                table_.vtable_address() + index_,
+                current_table_address + current_index,
                 sizeof(const void*),
                 &original
             )) {
+            if (fallback_vtable_address == current_table_address &&
+                fallback_slot_index == current_index) {
+                fallback_original_entry = nullptr;
+                fallback_vtable_address = nullptr;
+                fallback_slot_index = 0;
+            }
+
             installed_ = false;
             original_ = nullptr;
             object_ = nullptr;
@@ -246,6 +260,8 @@ public:
 private:
     struct context_storage {
         const void* original_entry = nullptr;
+        const void* vtable_address = nullptr;
+        std::size_t slot_index = 0;
         callback_type hook;
     };
 
@@ -263,6 +279,10 @@ private:
         return instance;
     }
 
+    static const void* fallback_original_entry;
+    static const void* fallback_vtable_address;
+    static std::size_t fallback_slot_index;
+
     static Return thunk_entry(void* object, Args... args) {
         context_ptr context;
 
@@ -277,7 +297,17 @@ private:
         }
 
         if (!context) {
-            throw std::runtime_error("stateful hook context was not found");
+            if (fallback_original_entry == nullptr) {
+                throw std::runtime_error(
+                    "stateful hook fallback original entry is not available"
+                );
+            }
+
+            const auto function = reinterpret_cast<function_type>(
+                const_cast<void*>(fallback_original_entry)
+            );
+
+            return function(object, args...);
         }
 
         context_type context_view{context->original_entry};
@@ -291,5 +321,16 @@ private:
     const void* original_ = nullptr;
     bool installed_ = false;
 };
+
+template <class Return, class... Args>
+const void* stateful_slot_hook<Return(Args...)>::fallback_original_entry =
+    nullptr;
+
+template <class Return, class... Args>
+const void* stateful_slot_hook<Return(Args...)>::fallback_vtable_address =
+    nullptr;
+
+template <class Return, class... Args>
+std::size_t stateful_slot_hook<Return(Args...)>::fallback_slot_index = 0;
 
 } // namespace vtablespp
