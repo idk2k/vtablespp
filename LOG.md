@@ -142,4 +142,6 @@ https://github.com/microsoft/vscode-cmake-tools/commit/8867be5cfe26d08c44a8c7d03
 [11/16/2026]
 
 + fix fallback (now support multiple hooks at one time)
++ add fix for stateful hook: per-slot, trampoline scheme (runtime codegen)
++ add tests for stateful hook
 

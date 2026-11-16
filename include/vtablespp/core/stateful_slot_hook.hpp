@@ -125,7 +125,7 @@ public:
         }
 
         const auto slot_key =
-            std::make_tuple(table_.vtable_address(), slot_, object_);
+            std::make_pair(table_.vtable_address(), slot_);
 
         {
             std::scoped_lock lock(registry_mutex);
@@ -198,7 +198,7 @@ private:
         }
 
         const auto slot_key =
-            std::make_tuple(table.vtable_address(), slot, object);
+            std::make_pair(table.vtable_address(), slot);
 
         {
             std::scoped_lock lock(registry_mutex);
@@ -367,15 +367,15 @@ private:
     std::atomic<bool> installed_{false};
 
     static std::mutex registry_mutex;
-    static std::set<std::tuple<const void*, std::size_t, void*>>
-        installed_slots;
+    static std::set<std::pair<const void*, std::size_t>>
+    installed_slots;
 };
 
 template <class Return, class... Args>
 std::mutex stateful_slot_hook<Return(Args...)>::registry_mutex;
 
 template <class Return, class... Args>
-std::set<std::tuple<const void*, std::size_t, void*>>
+std::set<std::pair<const void*, std::size_t>>
     stateful_slot_hook<Return(Args...)>::installed_slots;
 
 } // namespace vtablespp
