@@ -132,9 +132,14 @@ https://github.com/microsoft/vscode-cmake-tools/commit/8867be5cfe26d08c44a8c7d03
 
 ## TODO:
 1. safe inspect_vtable / describe API (which connect vtable_view, slot_classifier, symbol_resolver, rtti_reader)
-2. trunk detections using disassembler, not byte patterns
+2. thunk detections using disassembler, not byte patterns
 3. tests witht multiple inheritance and virtual inheritance, and diamond inheritance
 4. add new abi support (itanium abi for clang/gcc)
 5. safe call_slot wrapper
 
 - virtual inheritance (with thunk support - it uses vbtable)
+
+[11/16/2026]
+
++ fix fallback (now support multiple hooks at one time)
+

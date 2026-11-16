@@ -39,11 +39,7 @@ const void* const_object_address(const T& object) noexcept {
 } // namespace detail
 
 template <class Signature, class T, class... Args>
-decltype(auto) call_slot(
-    T& object,
-    std::size_t index,
-    Args&&... args
-) {
+decltype(auto) call_slot(T& object, std::size_t index, Args&&... args) {
     static_assert(
         std::is_polymorphic_v<std::remove_cv_t<T>>,
         "call_slot requires a polymorphic type"
@@ -51,9 +47,7 @@ decltype(auto) call_slot(
 
     using function_type = typename detail::slot_function<Signature>::type;
 
-    const void* vtable = abi::vtable_of(
-        detail::mutable_object_address(object)
-    );
+    const void* vtable = abi::vtable_of(detail::mutable_object_address(object));
 
     const void* entry = abi::vtable_entry(vtable, index);
 
@@ -67,9 +61,16 @@ decltype(auto) call_slot(
         throw std::runtime_error("vtable slot is a pure virtual function");
     }
 
-    const auto function = reinterpret_cast<function_type>(
-        const_cast<void*>(entry)
+    const auto function =
+        reinterpret_cast<function_type>(const_cast<void*>(entry));
+
+    std::printf(
+        "[hook] call_slot object=%p vtable=%p entry=%p\n",
+        detail::mutable_object_address(object),
+        vtable,
+        entry
     );
+    std::fflush(stdout);
 
     return function(
         detail::mutable_object_address(object),
@@ -78,11 +79,7 @@ decltype(auto) call_slot(
 }
 
 template <class Signature, class T, class... Args>
-decltype(auto) call_slot(
-    const T& object,
-    std::size_t index,
-    Args&&... args
-) {
+decltype(auto) call_slot(const T& object, std::size_t index, Args&&... args) {
     static_assert(
         std::is_polymorphic_v<std::remove_cv_t<T>>,
         "call_slot requires a polymorphic type"
@@ -90,9 +87,7 @@ decltype(auto) call_slot(
 
     using function_type = typename detail::slot_function<Signature>::type;
 
-    const void* vtable = abi::vtable_of(
-        detail::const_object_address(object)
-    );
+    const void* vtable = abi::vtable_of(detail::const_object_address(object));
 
     const void* entry = abi::vtable_entry(vtable, index);
 
@@ -106,9 +101,16 @@ decltype(auto) call_slot(
         throw std::runtime_error("vtable slot is a pure virtual function");
     }
 
-    const auto function = reinterpret_cast<function_type>(
-        const_cast<void*>(entry)
-    );
+    const auto function =
+        reinterpret_cast<function_type>(const_cast<void*>(entry));
+
+std::printf(
+    "[hook] call_slot object=%p vtable=%p entry=%p\n",
+    detail::mutable_object_address(object),
+    vtable,
+    entry
+);
+std::fflush(stdout);
 
     return function(
         detail::const_object_address(object),
