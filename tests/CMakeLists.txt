@@ -39,6 +39,7 @@ target_link_libraries(vtablespp_tests
     PRIVATE
         vtablespp::vtablespp
         GTest::gtest_main
+        kernel32
 )
 
 if(MSVC)

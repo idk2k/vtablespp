@@ -104,13 +104,13 @@ decltype(auto) call_slot(const T& object, std::size_t index, Args&&... args) {
     const auto function =
         reinterpret_cast<function_type>(const_cast<void*>(entry));
 
-std::printf(
-    "[hook] call_slot object=%p vtable=%p entry=%p\n",
-    detail::mutable_object_address(object),
-    vtable,
-    entry
-);
-std::fflush(stdout);
+    std::printf(
+        "[hook] call_slot object=%p vtable=%p entry=%p\n",
+        detail::mutable_object_address(object),
+        vtable,
+        entry
+    );
+    std::fflush(stdout);
 
     return function(
         detail::const_object_address(object),

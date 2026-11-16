@@ -12,8 +12,13 @@ using vtablespp::vtable_view;
 
 struct Calculator {
     virtual ~Calculator() = default;
+
     virtual int add(int& a, int& b) {
         return a + b;
+    }
+
+    virtual int subtract(int& a, int& b) {
+        return a - b;
     }
 };
 
@@ -28,19 +33,10 @@ TEST(StatefulSlotHook, CapturesStateAndCallsOriginal) {
         table,
         1,
         calculator,
-        [multiplier = 10](
-            vtablespp::slot_context<int(int&, int&)>& context,
-            void* object,
-            int& a,
-            int& b
-        ) {
-            a *= multiplier;
-            b *= multiplier;
-            std::printf(
-                "[hook] single original_entry=%p\n",
-                context.original_entry()
-            );
-            std::fflush(stdout);
+        [](auto& context, void* object, int& a, int& b) {
+            a *= 10;
+            b *= 10;
+
             return context.call_original_raw(object, a, b);
         }
     ));
@@ -106,49 +102,34 @@ TEST(StatefulSlotHook, RejectsSecondHookForSameObject) {
     second.uninstall();
 }
 
-TEST(StatefulSlotHook, IndependentHooksForDifferentObjects) {
-    Calculator first;
-    Calculator second;
+TEST(StatefulSlotHook, IndependentHooksForDifferentSlots) {
+    Calculator calculator;
 
-    const auto first_table = vtable_view::from_object(first, 2);
+    const auto table = vtable_view::from_object(calculator, 3);
 
-    const auto second_table = vtable_view::from_object(second, 2);
+    stateful_slot_hook<int(int&, int&)> add_hook;
+    stateful_slot_hook<int(int&, int&)> subtract_hook;
 
-    stateful_slot_hook<int(int&, int&)> first_hook;
-    stateful_slot_hook<int(int&, int&)> second_hook;
-
-    ASSERT_TRUE(first_hook.install(
-        first_table,
+    ASSERT_TRUE(add_hook.install(
+        table,
         1,
-        first,
-        [](auto& context, void* object, int a, int b) {
-            std::printf("[hook] lambda enter\n");
-            std::fflush(stdout);
-
-            std::printf(
-                "[hook] lambda original_entry=%p\n",
-                context.original_entry()
-            );
-            std::fflush(stdout);
-
+        calculator,
+        [](auto& context, void* object, int& a, int& b) {
             int mutable_a = a;
             int mutable_b = b;
 
             const int original =
                 context.call_original_raw(object, mutable_a, mutable_b);
 
-            std::printf("[hook] lambda original=%d\n", original);
-            std::fflush(stdout);
-
             return original * 10;
         }
     ));
 
-    ASSERT_TRUE(second_hook.install(
-        second_table,
-        1,
-        second,
-        [](auto& context, void* object, int a, int b) {
+    ASSERT_TRUE(subtract_hook.install(
+        table,
+        2,
+        calculator,
+        [](auto& context, void* object, int& a, int& b) {
             int mutable_a = a;
             int mutable_b = b;
 
@@ -159,48 +140,75 @@ TEST(StatefulSlotHook, IndependentHooksForDifferentObjects) {
         }
     ));
 
-    int first_a = 1;
-    int first_b = 2;
+    int a = 1;
+    int b = 2;
 
-    const int first_hooked_result =
-        vtablespp::call_slot<int(int&, int&)>(first, 1, first_a, first_b);
+    EXPECT_EQ(vtablespp::call_slot<int(int&, int&)>(calculator, 1, a, b), 30);
 
-    EXPECT_EQ(first_hooked_result, 30);
+    EXPECT_EQ(vtablespp::call_slot<int(int&, int&)>(calculator, 2, a, b), -100);
 
-    int second_a = 1;
-    int second_b = 2;
+    add_hook.uninstall();
+    subtract_hook.uninstall();
 
-    const int second_hooked_result =
-        vtablespp::call_slot<int(int&, int&)>(second, 1, second_a, second_b);
+    EXPECT_EQ(vtablespp::call_slot<int(int&, int&)>(calculator, 1, a, b), 3);
 
-    EXPECT_EQ(second_hooked_result, 300);
+    EXPECT_EQ(vtablespp::call_slot<int(int&, int&)>(calculator, 2, a, b), -1);
+}
 
-    first_hook.uninstall();
-    second_hook.uninstall();
+TEST(StatefulSlotHook, MultipleHooksOnDifferentSlots) {
+    Calculator calculator;
 
-    int restored_first_a = 1;
-    int restored_first_b = 2;
+    const auto table = vtable_view::from_object(calculator, 3);
 
-    const int first_restored_result = vtablespp::call_slot<int(int&, int&)>(
-        first,
+    stateful_slot_hook<int(int&, int&)> add_hook;
+    stateful_slot_hook<int(int&, int&)> subtract_hook;
+
+    ASSERT_TRUE(add_hook.install(
+        table,
         1,
-        restored_first_a,
-        restored_first_b
-    );
+        calculator,
+        [](auto& context, void* object, int& a, int& b) {
+            int mutable_a = a;
+            int mutable_b = b;
 
-    EXPECT_EQ(first_restored_result, 3);
+            const int original =
+                context.call_original_raw(object, mutable_a, mutable_b);
 
-    int restored_second_a = 1;
-    int restored_second_b = 2;
+            return original * 10;
+        }
+    ));
 
-    const int second_restored_result = vtablespp::call_slot<int(int&, int&)>(
-        second,
-        1,
-        restored_second_a,
-        restored_second_b
-    );
+    ASSERT_TRUE(subtract_hook.install(
+        table,
+        2,
+        calculator,
+        [](auto& context, void* object, int& a, int& b) {
+            int mutable_a = a;
+            int mutable_b = b;
 
-    EXPECT_EQ(second_restored_result, 3);
+            const int original =
+                context.call_original_raw(object, mutable_a, mutable_b);
+
+            return original * 100;
+        }
+    ));
+
+    int a = 1;
+    int b = 2;
+
+    EXPECT_EQ(vtablespp::call_slot<int(int&, int&)>(calculator, 1, a, b), 30);
+
+    EXPECT_EQ(vtablespp::call_slot<int(int&, int&)>(calculator, 2, a, b), -100);
+
+    add_hook.uninstall();
+
+    EXPECT_EQ(vtablespp::call_slot<int(int&, int&)>(calculator, 1, a, b), 3);
+
+    EXPECT_EQ(vtablespp::call_slot<int(int&, int&)>(calculator, 2, a, b), -100);
+
+    subtract_hook.uninstall();
+
+    EXPECT_EQ(vtablespp::call_slot<int(int&, int&)>(calculator, 2, a, b), -1);
 }
 
 } // namespace
