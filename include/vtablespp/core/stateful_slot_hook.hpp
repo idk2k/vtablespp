@@ -4,10 +4,10 @@
 #include <cstring>
 #include <memory>
 #include <mutex>
+#include <map>
 #include <type_traits>
 #include <utility>
-#include <set>
-#include <tuple>
+#include <unordered_map>
 
 #include <windows.h>
 
@@ -35,23 +35,16 @@ public:
 
     Return operator()(Args... args) {
         auto* function = reinterpret_cast<function_type>(entry_);
-
         return function(object_, std::forward<Args>(args)...);
     }
 
     Return call_original_raw(void* object, Args... args) {
         auto* function = reinterpret_cast<function_type>(entry_);
-
         return function(object, std::forward<Args>(args)...);
     }
 
-    void* original_entry() const noexcept {
-        return entry_;
-    }
-
-    void* entry() const noexcept {
-        return entry_;
-    }
+    void* original_entry() const noexcept { return entry_; }
+    void* entry() const noexcept { return entry_; }
 
 private:
     void* entry_;
@@ -62,17 +55,12 @@ template <class Return, class... Args>
 class stateful_slot_hook<Return(Args...)> {
 public:
     using signature_type = Return(Args...);
-
     using context_type = slot_context<Return(Args...)>;
 
     stateful_slot_hook() = default;
-
-    ~stateful_slot_hook() {
-        uninstall();
-    }
+    ~stateful_slot_hook() { uninstall(); }
 
     stateful_slot_hook(const stateful_slot_hook&) = delete;
-
     stateful_slot_hook& operator=(const stateful_slot_hook&) = delete;
 
     stateful_slot_hook(stateful_slot_hook&& other) noexcept
@@ -85,16 +73,13 @@ public:
     stateful_slot_hook& operator=(stateful_slot_hook&& other) noexcept {
         if (this != &other) {
             uninstall();
-
             storage_ = std::move(other.storage_);
             table_ = other.table_;
             slot_ = other.slot_;
             object_ = other.object_;
             installed_.store(other.installed_.load());
-
             other.installed_.store(false);
         }
-
         return *this;
     }
 
@@ -106,35 +91,23 @@ public:
         Callback&& callback
     ) {
         return install_impl(
-            table,
-            slot,
-            static_cast<void*>(&object),
+            table, slot, static_cast<void*>(&object),
             std::make_unique<callable_impl<std::decay_t<Callback>>>(
-                std::forward<Callback>(callback)
-            )
+                std::forward<Callback>(callback))
         );
     }
 
     void uninstall() {
-        if (!installed_.exchange(false)) {
-            return;
-        }
+        if (!installed_.exchange(false)) return;
+        if (!storage_) return;
 
-        if (!storage_) {
-            return;
-        }
-
-        const auto slot_key =
-            std::make_pair(table_.vtable_address(), slot_);
-
+        const auto slot_key = std::make_pair(table_.vtable_address(), slot_);
         {
             std::scoped_lock lock(registry_mutex);
-
-            installed_slots.erase(slot_key);
+            installed_hooks.erase(slot_key);
         }
 
         const void* original = storage_->original_entry;
-
         abi::write_memory(
             table_.vtable_address() + slot_,
             sizeof(const void*),
@@ -142,29 +115,22 @@ public:
         );
 
         free_trampoline(storage_->trampoline);
-
         storage_.reset();
     }
 
-    bool is_installed() const noexcept {
-        return installed_.load();
-    }
+    bool is_installed() const noexcept { return installed_.load(); }
 
 private:
     struct callable_base {
         virtual ~callable_base() = default;
-
         virtual Return call(context_type&, void*, Args...) = 0;
     };
 
     template <class F>
     struct callable_impl final : callable_base {
         F callback;
-
         explicit callable_impl(F&& f) : callback(std::move(f)) {}
-
-        Return
-        call(context_type& context, void* object, Args... args) override {
+        Return call(context_type& context, void* object, Args... args) override {
             return callback(context, object, std::forward<Args>(args)...);
         }
     };
@@ -181,35 +147,23 @@ private:
         void* object,
         std::unique_ptr<callable_base> callback
     ) {
-        if (installed_.load()) {
-            return false;
-        }
+        if (installed_.load()) return false;
 
         const auto entry = table.at(slot);
-
-        if (!entry.has_value() || *entry == nullptr) {
-            return false;
-        }
+        if (!entry.has_value() || *entry == nullptr) return false;
 
         const auto purecall = abi::purecall_address();
+        if (purecall.has_value() && *entry == *purecall) return false;
 
-        if (purecall.has_value() && *entry == *purecall) {
-            return false;
-        }
-
-        const auto slot_key =
-            std::make_pair(table.vtable_address(), slot);
-
+        const auto slot_key = std::make_pair(table.vtable_address(), slot);
         {
             std::scoped_lock lock(registry_mutex);
-
-            if (installed_slots.count(slot_key) != 0) {
-                return false;
+            if (installed_hooks.count(slot_key) != 0) {
+                return false;  // слот уже hook'нут (любым объектом)
             }
         }
 
         auto storage = std::make_shared<context_storage>();
-
         storage->original_entry = const_cast<void*>(*entry);
         storage->hook = std::move(callback);
 
@@ -217,27 +171,16 @@ private:
             storage.get(),
             reinterpret_cast<const void*>(&invoke)
         );
-
-        if (trampoline == nullptr) {
-            return false;
-        }
+        if (trampoline == nullptr) return false;
 
         storage->trampoline = trampoline;
 
         const void* replacement = trampoline;
-
         const bool written = abi::write_memory(
             table.vtable_address() + slot,
             sizeof(const void*),
             &replacement
         );
-
-        std::printf(
-            "[hook] install: written=%d slot_now=%p\n",
-            static_cast<int>(written),
-            table.at(slot).value_or(nullptr)
-        );
-        std::fflush(stdout);
 
         if (!written) {
             free_trampoline(trampoline);
@@ -246,84 +189,72 @@ private:
 
         {
             std::scoped_lock lock(registry_mutex);
-
-            installed_slots.insert(slot_key);
+            installed_hooks.emplace(slot_key, storage.get());
         }
 
         storage_ = std::move(storage);
         table_ = table;
         slot_ = slot;
         object_ = object;
-
         installed_.store(true);
-
         return true;
     }
 
-    static void*
-    allocate_trampoline(context_storage* context, const void* dispatcher) {
-        constexpr std::size_t kTrampolineSize = 32;
+    static void* allocate_trampoline(context_storage* context, const void* dispatcher) {
+        constexpr std::size_t kTrampolineSize = 48;
 
         void* memory = VirtualAlloc(
-            nullptr,
-            kTrampolineSize,
-            MEM_COMMIT | MEM_RESERVE,
-            PAGE_READWRITE
+            nullptr, kTrampolineSize,
+            MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE
         );
-
-        if (memory == nullptr) {
-            return nullptr;
-        }
+        if (memory == nullptr) return nullptr;
 
         auto* code = static_cast<unsigned char*>(memory);
 
         // mov rax, context
         code[0] = 0x48;
         code[1] = 0xB8;
-
         std::memcpy(code + 2, &context, sizeof(context));
 
         // mov r11, dispatcher
         code[10] = 0x49;
         code[11] = 0xBB;
-
         std::memcpy(code + 12, &dispatcher, sizeof(dispatcher));
 
-        // sub rsp, 0x28  (40 байт: home space + запас, чтобы пролог
-        //                  invoke не затер RA1)
+        // sub rsp, 0x28
         code[20] = 0x48;
         code[21] = 0x83;
         code[22] = 0xEC;
         code[23] = 0x28;
 
+        // mov [rsp+0x20], rax — context в позицию 5-го параметра (ABI-стабильно)
+        code[24] = 0x48;
+        code[25] = 0x89;
+        code[26] = 0x44;
+        code[27] = 0x24;
+        code[28] = 0x20;
+
         // call r11
-        code[24] = 0x41;
-        code[25] = 0xFF;
-        code[26] = 0xD3;
+        code[29] = 0x41;
+        code[30] = 0xFF;
+        code[31] = 0xD3;
 
         // add rsp, 0x28
-        code[27] = 0x48;
-        code[28] = 0x83;
-        code[29] = 0xC4;
-        code[30] = 0x28;
+        code[32] = 0x48;
+        code[33] = 0x83;
+        code[34] = 0xC4;
+        code[35] = 0x28;
 
         // ret
-        code[31] = 0xC3;
+        code[36] = 0xC3;
 
         DWORD old_protect = 0;
-
-        if (!VirtualProtect(
-                memory,
-                kTrampolineSize,
-                PAGE_EXECUTE_READ,
-                &old_protect
-            )) {
+        if (!VirtualProtect(memory, kTrampolineSize, PAGE_EXECUTE_READ, &old_protect)) {
             VirtualFree(memory, 0, MEM_RELEASE);
             return nullptr;
         }
 
         FlushInstructionCache(GetCurrentProcess(), memory, kTrampolineSize);
-
         return memory;
     }
 
@@ -337,27 +268,16 @@ private:
         void** return_address_slot =
             reinterpret_cast<void**>(_AddressOfReturnAddress());
 
-        const auto* return_address =
-            static_cast<const unsigned char*>(*return_address_slot);
-
+        // context лежит на позиции 5-го параметра: RA_slot + 0x28
         void* raw_context = nullptr;
-
-        std::memcpy(&raw_context, return_address - 25, sizeof(raw_context));
+        std::memcpy(&raw_context, return_address_slot + 5, sizeof(raw_context));
 
         auto* context = static_cast<context_storage*>(raw_context);
 
         context_type context_view(context->original_entry, object);
-
-        Return result = context->hook->call(
-            context_view,
-            object,
-            std::forward<Args>(args)...
+        return context->hook->call(
+            context_view, object, std::forward<Args>(args)...
         );
-
-        std::printf("[hook] invoke returned from hook\n");
-        std::fflush(stdout);
-
-        return result;
     }
 
     std::shared_ptr<context_storage> storage_;
@@ -367,15 +287,19 @@ private:
     std::atomic<bool> installed_{false};
 
     static std::mutex registry_mutex;
-    static std::set<std::pair<const void*, std::size_t>>
-    installed_slots;
+    static std::map<
+        std::pair<const void*, std::size_t>,
+        context_storage*
+    > installed_hooks;
 };
 
 template <class Return, class... Args>
 std::mutex stateful_slot_hook<Return(Args...)>::registry_mutex;
 
 template <class Return, class... Args>
-std::set<std::pair<const void*, std::size_t>>
-    stateful_slot_hook<Return(Args...)>::installed_slots;
+std::map<
+    std::pair<const void*, std::size_t>,
+    typename stateful_slot_hook<Return(Args...)>::context_storage*
+> stateful_slot_hook<Return(Args...)>::installed_hooks;
 
 } // namespace vtablespp
