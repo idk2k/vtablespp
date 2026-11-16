@@ -144,4 +144,16 @@ https://github.com/microsoft/vscode-cmake-tools/commit/8867be5cfe26d08c44a8c7d03
 + fix fallback (now support multiple hooks at one time)
 + add fix for stateful hook: per-slot, trampoline scheme (runtime codegen)
 + add tests for stateful hook
++ add docs about hooks (+ mental model)
 
+## TODO:
+1. safe inspect_vtable / describe API (which connect vtable_view, slot_classifier, symbol_resolver, rtti_reader)
+2. thunk detections using disassembler, not byte patterns
+3. tests witht multiple inheritance and virtual inheritance, and diamond inheritance
+4. add new abi support (itanium abi for clang/gcc)
+5. safe call_slot wrapper
+
+- virtual inheritance (with thunk support - it uses vbtable)
+
+
+2. Future improvement: use Zydis to decode a bounded instruction window at each vtable entry and classify thunks by decoded semantics rather than raw byte patterns. Start with this-adjustor and direct-jump detection; treat return-adjustor detection as a separate milestone.
